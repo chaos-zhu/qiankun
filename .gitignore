@@ -12,7 +12,6 @@ config.local.js
 .umi-production
 .idea/
 .cache
-yarn.lock
 es
 lib
 package-lock.json

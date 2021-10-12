@@ -98,6 +98,7 @@ export function doPrefetchStrategy(
     })();
   } else {
     switch (prefetchStrategy) {
+      // 默认，加载完第一个应用后开始预加载其他子应用
       case true:
         prefetchAfterFirstMounted(apps, importEntryOpts);
         break;

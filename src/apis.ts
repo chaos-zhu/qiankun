@@ -46,21 +46,24 @@ export function registerMicroApps<T extends ObjectType>(
   apps: Array<RegistrableApp<T>>,
   lifeCycles?: FrameworkLifeCycles<T>,
 ) {
-  // registerMicroApps 支持动态添加 仅注册一次
+  // 支持动态添加 仅注册一次
   const unregisteredApps = apps.filter((app) => !microApps.some((registeredApp) => registeredApp.name === app.name));
   microApps = [...microApps, ...unregisteredApps];
 
   // 注册子应用
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
-
+    // console.log({ name, activeRule, props, ...appConfig });
     registerApplication({
       name,
+      // 激活 activeRule 时调用
       app: async () => {
         loader(true);
+        // 等待调用start才开始真正的注册子应用
         await frameworkStartedDefer.promise;
 
         const { mount, ...otherMicroAppConfigs } = (
+          // 加载应用的content
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
 
@@ -193,6 +196,7 @@ export function loadMicroApp<T extends ObjectType>(
   return microApp;
 }
 
+// 开始子应用加载
 export function start(opts: FrameworkConfiguration = {}) {
   frameworkConfiguration = { prefetch: true, singular: true, sandbox: true, ...opts };
   const {
@@ -204,13 +208,16 @@ export function start(opts: FrameworkConfiguration = {}) {
   } = frameworkConfiguration;
 
   if (prefetch) {
+    // 预加载子应用
     doPrefetchStrategy(microApps, prefetch, importEntryOpts);
   }
 
+  // 沙箱运行环境判断
   frameworkConfiguration = autoDowngradeForLowVersionBrowser(frameworkConfiguration);
 
-  startSingleSpa({ urlRerouteOnly });
+  // 开始加载子应用
+  startSingleSpa({ urlRerouteOnly }); // 当url发生实质性变化时才重载路应用(https://blog.csdn.net/qq_41694291/article/details/113842872)
   started = true;
 
-  frameworkStartedDefer.resolve();
+  frameworkStartedDefer.resolve(); // 调用后才开始注册子应用
 }

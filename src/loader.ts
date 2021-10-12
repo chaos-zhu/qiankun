@@ -241,6 +241,7 @@ let prevAppUnmountedDeferred: Deferred<void>;
 
 export type ParcelConfigObjectGetter = (remountContainer?: string | HTMLElement) => ParcelConfigObject;
 
+// 加载应用
 export async function loadApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration: FrameworkConfiguration = {},
@@ -255,7 +256,7 @@ export async function loadApp<T extends ObjectType>(
   }
 
   const {
-    singular = false,
+    singular = false, // 单实例指的是同一时间只会渲染一个微应用
     sandbox = true,
     excludeAssetFilter,
     globalContext = window,
@@ -263,14 +264,23 @@ export async function loadApp<T extends ObjectType>(
   } = configuration;
 
   // get the entry html content and script executor
+  console.log(entry);
+  console.log(importEntryOpts);
   const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
+  console.log('template: ', template);
+  console.log('execScripts: ', execScripts);
+  console.log('assetPublicPath: ', assetPublicPath);
 
   // as single-spa load and bootstrap new app parallel with other apps unmounting
   // (see https://github.com/CanopyTax/single-spa/blob/master/src/navigation/reroute.js#L74)
   // we need wait to load the app until all apps are finishing unmount in singular mode
+  // 单实例模式时 需等待上一个应用卸载
   if (await validateSingularMode(singular, app)) {
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
+
+  console.log(await validateSingularMode(singular, app));
+  console.log(await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise));
 
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
 
