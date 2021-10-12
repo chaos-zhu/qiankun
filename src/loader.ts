@@ -24,7 +24,7 @@ import {
   getDefaultTplWrapper,
   getWrapperId,
   isEnableScopedCSS,
-  performanceMark,
+  // performanceMark,
   performanceMeasure,
   performanceGetEntriesByName,
   toArray,
