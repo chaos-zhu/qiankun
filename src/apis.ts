@@ -53,20 +53,24 @@ export function registerMicroApps<T extends ObjectType>(
   // 注册子应用
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
-    // console.log({ name, activeRule, props, ...appConfig });
+    // 设置子应用属性
     registerApplication({
       name,
       // 激活 activeRule 时调用
       app: async () => {
         loader(true);
-        // 等待调用start才开始真正的注册子应用
+        // 等待调用start才开始加载子应用
         await frameworkStartedDefer.promise;
+        
+        // {prefetch: true, singular: true, sandbox: true}
+        // console.log('frameworkConfiguration:', frameworkConfiguration);
 
         const { mount, ...otherMicroAppConfigs } = (
-          // 加载应用的content
+          // 加载应用的content【主要】
+          // console.log(appConfig); // {entry: '//localhost:7100', container: '#subapp-viewport'}
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
-
+        // return 一系列生命周期供single-spa调用
         return {
           mount: [async () => loader(true), ...toArray(mount), async () => loader(false)],
           ...otherMicroAppConfigs,

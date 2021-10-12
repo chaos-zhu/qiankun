@@ -61,6 +61,7 @@ type SymbolTarget = 'target' | 'rawWindow';
 
 type FakeWindow = Window & Record<PropertyKey, any>;
 
+// 创建一个类window对象, 包含window是否可使用delete删除，是否可再次设置属性
 function createFakeWindow(global: Window) {
   // map always has the fastest performance in has check scenario
   // see https://jsperf.com/array-indexof-vs-set-has/23
@@ -72,12 +73,13 @@ function createFakeWindow(global: Window) {
    see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/handler/getOwnPropertyDescriptor
    > A property cannot be reported as non-configurable, if it does not exists as an own property of the target object or if it exists as a configurable own property of the target object.
    */
-  Object.getOwnPropertyNames(global)
+    Object.getOwnPropertyNames(global)
     .filter((p) => {
       const descriptor = Object.getOwnPropertyDescriptor(global, p);
-      return !descriptor?.configurable;
+      return !descriptor?.configurable; // 返回window不可配置的属性列表
     })
     .forEach((p) => {
+      // console.log(p);
       const descriptor = Object.getOwnPropertyDescriptor(global, p);
       if (descriptor) {
         const hasGetter = Object.prototype.hasOwnProperty.call(descriptor, 'get');
@@ -183,9 +185,9 @@ export default class ProxySandbox implements SandBox {
     this.type = SandBoxType.Proxy;
     const { updatedValueSet } = this;
 
-    const rawWindow = globalContext;
+    const rawWindow = globalContext; // 默认原生window对象
     const { fakeWindow, propertiesWithGetter } = createFakeWindow(rawWindow);
-
+    console.log(fakeWindow);
     const descriptorTargetMap = new Map<PropertyKey, SymbolTarget>();
     const hasOwnProperty = (key: PropertyKey) => fakeWindow.hasOwnProperty(key) || rawWindow.hasOwnProperty(key);
 

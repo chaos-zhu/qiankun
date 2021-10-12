@@ -63,6 +63,7 @@ async function validateSingularMode<T extends ObjectType>(
 // @ts-ignore
 const supportShadowDOM = document.head.attachShadow || document.head.createShadowRoot;
 
+// 创建根元素 css 隔离
 function createElement(
   appContent: string,
   strictStyleIsolation: boolean,
@@ -73,6 +74,7 @@ function createElement(
   containerElement.innerHTML = appContent;
   // appContent always wrapped with a singular div
   const appElement = containerElement.firstChild as HTMLElement;
+  // 为true 且浏览器支持shadow dom 返回以shadow dom包裹的DOM结构
   if (strictStyleIsolation) {
     if (!supportShadowDOM) {
       console.warn(
@@ -93,6 +95,7 @@ function createElement(
     }
   }
 
+  // forEach没看明白?
   if (scopedCSS) {
     const attr = appElement.getAttribute(css.QiankunCSSRewriteAttr);
     if (!attr) {
@@ -160,14 +163,12 @@ function getRender(appName: string, appContent: string, legacyRender?: HTMLConte
           '[qiankun] Custom rendering function is deprecated, you can use the container element setting instead!',
         );
       }
-
       return legacyRender({ loading, appContent: element ? appContent : '' });
     }
 
     const containerElement = getContainer(container!);
 
-    // The container might have be removed after micro app unmounted.
-    // Such as the micro app unmount lifecycle called by a react componentWillUnmount lifecycle, after micro app unmounted, the react component might also be removed
+    // 判断子应用容器是否存在
     if (phase !== 'unmounted') {
       const errorMsg = (() => {
         switch (phase) {
@@ -186,13 +187,13 @@ function getRender(appName: string, appContent: string, legacyRender?: HTMLConte
     }
 
     if (containerElement && !containerElement.contains(element)) {
-      // clear the container
+      // 清空子应用容器内容
       while (containerElement!.firstChild) {
         rawRemoveChild.call(containerElement, containerElement!.firstChild);
       }
-
-      // append the element to container if it exist
+      // 插入 html template 到 子应用容器
       if (element) {
+        // console.log('element: ', element);
         rawAppendChild.call(containerElement, element);
       }
     }
@@ -252,56 +253,62 @@ export async function loadApp<T extends ObjectType>(
 
   const markName = `[qiankun] App ${appInstanceId} Loading`;
   if (process.env.NODE_ENV === 'development') {
-    performanceMark(markName);
+    // performanceMark(markName);
   }
 
   const {
-    singular = false, // 单实例指的是同一时间只会渲染一个微应用
-    sandbox = true,
+    singular = false, // 单实例指的是同一时间只会渲染一个微应用, 在start时默认设置为true
+    sandbox = true, // css ShadowDOM 沙箱, 在start时默认设置为true. 保证不同子应用之间样式隔离。无法保证主子应用样式冲突
     excludeAssetFilter,
     globalContext = window,
     ...importEntryOpts
   } = configuration;
 
-  // get the entry html content and script executor
-  console.log(entry);
-  console.log(importEntryOpts);
-  const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
-  console.log('template: ', template);
-  console.log('execScripts: ', execScripts);
-  console.log('assetPublicPath: ', assetPublicPath);
+  // console.log('configuration: ', configuration);
 
-  // as single-spa load and bootstrap new app parallel with other apps unmounting
-  // (see https://github.com/CanopyTax/single-spa/blob/master/src/navigation/reroute.js#L74)
-  // we need wait to load the app until all apps are finishing unmount in singular mode
+  // get the entry html content and script executor
+  // console.log(importEntryOpts); // {prefetch: true}
+  const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
+  console.log('template: \n', template);
+  console.log('execScripts:  \n', execScripts); // 执行template中所有的js
+  console.log('assetPublicPath:  \n', assetPublicPath);
+
   // 单实例模式时 需等待上一个应用卸载
+  // console.log(singular); // 默认true
   if (await validateSingularMode(singular, app)) {
+    // await undefined 无影响
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  console.log(await validateSingularMode(singular, app));
-  console.log(await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise));
+  // console.log('prevAppUnmountedDeferred: ', prevAppUnmountedDeferred); // 切换子应用时才有值？
 
+  // 生成 子应用容器包裹dom
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
-
+  console.log('appContent: \n', appContent); // 包含了html根元素
+  
+  // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
+  // 普通css隔离
   const scopedCSS = isEnableScopedCSS(sandbox);
+  // 生成最终的子应用Dom
   let initialAppWrapperElement: HTMLElement | null = createElement(
     appContent,
     strictStyleIsolation,
     scopedCSS,
     appName,
   );
+  console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
 
   const initialContainer = 'container' in app ? app.container : undefined;
-  const legacyRender = 'render' in app ? app.render : undefined;
 
+  // 渲染 html template
+  const legacyRender = 'render' in app ? app.render : undefined; // 兼容 v1 ,v2 弃用 不推荐使用
   const render = getRender(appName, appContent, legacyRender);
-
-  // 第一次加载设置应用可见区域 dom 结构
-  // 确保每次应用加载前容器 dom 结构已经设置完毕
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
 
+  // throw Error('👆 插入移除style&script后的html');
+
+  // Getter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
   const initialAppWrapperGetter = getAppWrapperGetter(
     appName,
     appInstanceId,
@@ -310,16 +317,18 @@ export async function loadApp<T extends ObjectType>(
     scopedCSS,
     () => initialAppWrapperElement,
   );
+  // console.log('initialAppWrapperGetter: \n', initialAppWrapperGetter());
 
+  // js 沙箱运行环境
   let global = globalContext;
   let mountSandbox = () => Promise.resolve();
   let unmountSandbox = () => Promise.resolve();
-  const useLooseSandbox = typeof sandbox === 'object' && !!sandbox.loose;
+  const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
+  // 关闭沙箱将会对整个window变量产生污染
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,
-      // FIXME should use a strict sandbox logic while remount, see https://github.com/umijs/qiankun/issues/518
       initialAppWrapperGetter,
       scopedCSS,
       useLooseSandbox,
@@ -332,6 +341,7 @@ export async function loadApp<T extends ObjectType>(
     unmountSandbox = sandboxContainer.unmount;
   }
 
+  // 生命周期相关逻辑 ==
   const {
     beforeUnmount = [],
     afterUnmount = [],
@@ -357,6 +367,7 @@ export async function loadApp<T extends ObjectType>(
   // FIXME temporary way
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
 
+  // 返回的一系列钩子 single-spa适当时机调用
   const parcelConfigGetter: ParcelConfigObjectGetter = (remountContainer = initialContainer) => {
     let appWrapperElement: HTMLElement | null;
     let appWrapperGetter: ReturnType<typeof getAppWrapperGetter>;
@@ -370,7 +381,7 @@ export async function loadApp<T extends ObjectType>(
             const marks = performanceGetEntriesByName(markName, 'mark');
             // mark length is zero means the app is remounting
             if (marks && !marks.length) {
-              performanceMark(markName);
+              // performanceMark(markName);
             }
           }
         },

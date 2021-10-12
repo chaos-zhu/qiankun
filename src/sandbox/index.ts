@@ -34,14 +34,17 @@ export function createSandboxContainer(
   appName: string,
   elementGetter: () => HTMLElement | ShadowRoot,
   scopedCSS: boolean,
-  useLooseSandbox?: boolean,
+  useLooseSandbox?: boolean, // 默认false
   excludeAssetFilter?: (url: string) => boolean,
   globalContext?: typeof window,
 ) {
   let sandbox: SandBox;
   if (window.Proxy) {
+    // LegacySandbox：旧的单实例沙箱
+    // ProxySandbox：多实例沙箱
     sandbox = useLooseSandbox ? new LegacySandbox(appName, globalContext) : new ProxySandbox(appName, globalContext);
   } else {
+    // 浏览器不支持Proxy时的单实例沙箱
     sandbox = new SnapshotSandbox(appName);
   }
 
