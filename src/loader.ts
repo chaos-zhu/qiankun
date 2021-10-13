@@ -24,9 +24,6 @@ import {
   getDefaultTplWrapper,
   getWrapperId,
   isEnableScopedCSS,
-  // performanceMark,
-  performanceMeasure,
-  performanceGetEntriesByName,
   toArray,
   validateExportLifecycle,
 } from './utils';
@@ -250,11 +247,6 @@ export async function loadApp<T extends ObjectType>(
 ): Promise<ParcelConfigObjectGetter> {
   const { entry, name: appName } = app;
   const appInstanceId = `${appName}_${+new Date()}_${Math.floor(Math.random() * 1000)}`;
-
-  const markName = `[qiankun] App ${appInstanceId} Loading`;
-  if (process.env.NODE_ENV === 'development') {
-    // performanceMark(markName);
-  }
 
   const {
     singular = false, // 单实例指的是同一时间只会渲染一个微应用, 在start时默认设置为true
