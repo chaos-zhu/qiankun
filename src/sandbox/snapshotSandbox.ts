@@ -40,7 +40,6 @@ export default class SnapshotSandbox implements SandBox {
 
   // 激活沙箱 浅拷贝一份window对象
   active() {
-    console.log(123123);
     this.windowSnapshot = {} as Window;
     iter(window, (prop) => {
       this.windowSnapshot[prop] = window[prop];

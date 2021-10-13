@@ -325,7 +325,7 @@ export async function loadApp<T extends ObjectType>(
   let unmountSandbox = () => Promise.resolve();
   const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
-  // 关闭沙箱将会对整个window变量产生污染
+  // 注册沙箱 (关闭沙箱将会对整个window变量产生污染)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,
@@ -337,23 +337,30 @@ export async function loadApp<T extends ObjectType>(
     );
     // 用沙箱的代理对象作为接下来使用的全局对象
     global = sandboxContainer.instance.proxy as typeof window;
+    // 激活沙箱
     mountSandbox = sandboxContainer.mount;
+    // 失活沙箱
     unmountSandbox = sandboxContainer.unmount;
   }
 
-  // 生命周期相关逻辑 ==
+  // 合并内部与外部传入的生命周期
   const {
     beforeUnmount = [],
     afterUnmount = [],
     afterMount = [],
     beforeMount = [],
     beforeLoad = [],
+    // getAddOns 中内部生命周期配置 微前端 加载的环境变量 __POWERED_BY_QIANKUN__
   } = mergeWith({}, getAddOns(global, assetPublicPath), lifeCycles, (v1, v2) => concat(v1 ?? [], v2 ?? []));
 
+  // 立即执行 beforeLoad 钩子(变量&publicPath配置)
   await execHooksChain(toArray(beforeLoad), app, global);
 
-  // get the lifecycle hooks from module exports
+  // 在沙箱中执行 子应用js脚本 返回值：scriptExports 为子应用暴露的钩子
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox);
+  // debugger;
+
+  // 获取子应用暴露的钩子(有强制性校验)
   const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(
     scriptExports,
     appName,
@@ -361,38 +368,32 @@ export async function loadApp<T extends ObjectType>(
     sandboxContainer?.instance?.latestSetProp,
   );
 
+  // 主子应用通信(暂时忽略)
   const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
     getMicroAppStateActions(appInstanceId);
 
   // FIXME temporary way
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
 
-  // 返回的一系列钩子 single-spa适当时机调用
+  // 返回的一系列钩子供 single-spa 适当时机调用
   const parcelConfigGetter: ParcelConfigObjectGetter = (remountContainer = initialContainer) => {
     let appWrapperElement: HTMLElement | null;
     let appWrapperGetter: ReturnType<typeof getAppWrapperGetter>;
 
     const parcelConfig: ParcelConfigObject = {
       name: appInstanceId,
+      // 子应用初始化时调用
       bootstrap,
+      // 子应用挂载时调用
       mount: [
-        async () => {
-          if (process.env.NODE_ENV === 'development') {
-            const marks = performanceGetEntriesByName(markName, 'mark');
-            // mark length is zero means the app is remounting
-            if (marks && !marks.length) {
-              // performanceMark(markName);
-            }
-          }
-        },
+        // 单实例模式判断，新的子应用挂载行为会在旧的子应用卸载之后才开始
         async () => {
           if ((await validateSingularMode(singular, app)) && prevAppUnmountedDeferred) {
             return prevAppUnmountedDeferred.promise;
           }
-
           return undefined;
         },
-        // initial wrapper element before app mount/remount
+        // ？initial wrapper element before app mount/remount
         async () => {
           appWrapperElement = initialAppWrapperElement;
           appWrapperGetter = getAppWrapperGetter(
@@ -404,7 +405,7 @@ export async function loadApp<T extends ObjectType>(
             () => appWrapperElement,
           );
         },
-        // 添加 mount hook, 确保每次应用加载前容器 dom 结构已经设置完毕
+        // ？添加 mount hook, 确保每次应用加载前容器 dom 结构已经设置完毕
         async () => {
           const useNewContainer = remountContainer !== initialContainer;
           if (useNewContainer || !appWrapperElement) {
@@ -416,39 +417,44 @@ export async function loadApp<T extends ObjectType>(
 
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
         },
+        // 激活沙箱
         mountSandbox,
-        // exec the chain after rendering to keep the behavior with beforeLoad
+        // 执行内部 beforeMount 钩子
         async () => execHooksChain(toArray(beforeMount), app, global),
+        // 执行子应用暴露的mount钩子
         async (props) => mount({ ...props, container: appWrapperGetter(), setGlobalState, onGlobalStateChange }),
-        // finish loading after app mounted
+        // ？finish loading after app mounted
         async () => render({ element: appWrapperElement, loading: false, container: remountContainer }, 'mounted'),
+        // 执行内部 afterMount 钩子
         async () => execHooksChain(toArray(afterMount), app, global),
-        // initialize the unmount defer after app mounted and resolve the defer after it unmounted
+        // ？initialize the unmount defer after app mounted and resolve the defer after it unmounted
         async () => {
           if (await validateSingularMode(singular, app)) {
             prevAppUnmountedDeferred = new Deferred<void>();
           }
-        },
-        async () => {
-          if (process.env.NODE_ENV === 'development') {
-            const measureName = `[qiankun] App ${appInstanceId} Loading Consuming`;
-            performanceMeasure(measureName, markName);
-          }
-        },
+        }
       ],
+      // 子应用卸载时调用(在子应用激活阶段， single-spa会activeRule未命中时将会触发 unmount)
       unmount: [
+        // 执行内部 beforeUnmount 钩子
         async () => execHooksChain(toArray(beforeUnmount), app, global),
+        // 执行子应用 unmount 钩子
         async (props) => unmount({ ...props, container: appWrapperGetter() }),
+        // 失活沙箱
         unmountSandbox,
+        // 执行内部 afterUnmount 钩子
         async () => execHooksChain(toArray(afterUnmount), app, global),
         async () => {
+          // 卸载应用
           render({ element: null, loading: false, container: remountContainer }, 'unmounted');
+          // 关闭状态共享
           offGlobalStateChange(appInstanceId);
           // for gc
           appWrapperElement = null;
           syncAppWrapperElement2Sandbox(appWrapperElement);
         },
         async () => {
+          // 没有子应用running，处于空闲状态
           if ((await validateSingularMode(singular, app)) && prevAppUnmountedDeferred) {
             prevAppUnmountedDeferred.resolve();
           }

@@ -11,6 +11,7 @@ export default function getAddOn(global: Window, publicPath = '/'): FrameworkLif
 
   return {
     async beforeLoad() {
+      // 针对子应用动态配置的publicPath(加载子应用资源的根路径)
       // eslint-disable-next-line no-param-reassign
       global.__INJECTED_PUBLIC_PATH_BY_QIANKUN__ = publicPath;
     },
