@@ -76,7 +76,7 @@ function createFakeWindow(global: Window) {
     Object.getOwnPropertyNames(global)
     .filter((p) => {
       const descriptor = Object.getOwnPropertyDescriptor(global, p);
-      return !descriptor?.configurable; // 返回window不可配置的属性列表
+      return !descriptor?.configurable; // 返回window不可配置描述符的属性列表
     })
     .forEach((p) => {
       // console.log(p);
@@ -185,21 +185,27 @@ export default class ProxySandbox implements SandBox {
     this.type = SandBoxType.Proxy;
     const { updatedValueSet } = this;
 
-    const rawWindow = globalContext; // 默认原生window对象
+    // 默认原生window对象
+    const rawWindow = globalContext;
+    // fake window对象
     const { fakeWindow, propertiesWithGetter } = createFakeWindow(rawWindow);
-    console.log(fakeWindow);
+    // console.log(fakeWindow);
+
     const descriptorTargetMap = new Map<PropertyKey, SymbolTarget>();
     const hasOwnProperty = (key: PropertyKey) => fakeWindow.hasOwnProperty(key) || rawWindow.hasOwnProperty(key);
 
     const proxy = new Proxy(fakeWindow, {
       set: (target: FakeWindow, p: PropertyKey, value: any): boolean => {
         if (this.sandboxRunning) {
+          // 记录正在运行的沙箱
           this.registerRunningApp(name, proxy);
-          // We must kept its description while the property existed in rawWindow before
+
+          // 不存在于fakeWindow而存在rawWindow上的属性
           if (!target.hasOwnProperty(p) && rawWindow.hasOwnProperty(p)) {
             const descriptor = Object.getOwnPropertyDescriptor(rawWindow, p);
             const { writable, configurable, enumerable } = descriptor!;
             if (writable) {
+              // 给fakeWindow设置上
               Object.defineProperty(target, p, {
                 configurable,
                 enumerable,
@@ -208,6 +214,7 @@ export default class ProxySandbox implements SandBox {
               });
             }
           } else {
+            // rawWindow上不存在说明非原生属性，直接set在fakeWindow
             // @ts-ignore
             target[p] = value;
           }
@@ -217,9 +224,9 @@ export default class ProxySandbox implements SandBox {
             rawWindow[p] = value;
           }
 
-          updatedValueSet.add(p);
+          updatedValueSet.add(p); // 新增的属性记录在updatedValueSet集合，作用？
 
-          this.latestSetProp = p;
+          this.latestSetProp = p; // 记录最后一次设置的属性，作用？
 
           return true;
         }
