@@ -284,7 +284,7 @@ export async function loadApp<T extends ObjectType>(
 
   // 生成 子应用容器包裹dom
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
-  console.log('appContent: \n', appContent); // 包含了html根元素
+  // console.log('appContent: \n', appContent); // 包含了html根元素
   
   // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;

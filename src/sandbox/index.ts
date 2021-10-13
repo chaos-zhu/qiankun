@@ -42,6 +42,7 @@ export function createSandboxContainer(
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
     // ProxySandbox：多实例沙箱
+    console.log('useLooseSandbox: ', useLooseSandbox);
     sandbox = useLooseSandbox ? new LegacySandbox(appName, globalContext) : new ProxySandbox(appName, globalContext);
   } else {
     // 浏览器不支持Proxy时的单实例沙箱
@@ -67,7 +68,7 @@ export function createSandboxContainer(
       /* ------------------------------------------ 因为有上下文依赖（window），以下代码执行顺序不能变 ------------------------------------------ */
 
       /* ------------------------------------------ 1. 启动/恢复 沙箱------------------------------------------ */
-      sandbox.active();
+      sandbox.active(); // 激活沙箱
 
       const sideEffectsRebuildersAtBootstrapping = sideEffectsRebuilders.slice(0, bootstrappingFreers.length);
       const sideEffectsRebuildersAtMounting = sideEffectsRebuilders.slice(bootstrappingFreers.length);

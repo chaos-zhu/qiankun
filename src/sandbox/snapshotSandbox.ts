@@ -16,7 +16,7 @@ function iter(obj: typeof window, callbackFn: (prop: any) => void) {
 }
 
 /**
- * 基于 diff 方式实现的沙箱，用于不支持 Proxy 的低版本浏览器
+ * 基于 diff 方式实现的沙箱，用于不支持 Proxy 的低版本浏览器 兼容性方案
  */
 export default class SnapshotSandbox implements SandBox {
   proxy: WindowProxy;
@@ -29,6 +29,7 @@ export default class SnapshotSandbox implements SandBox {
 
   private windowSnapshot!: Window;
 
+  // 存放已经更改过的window属性，恢复激活时用到
   private modifyPropsMap: Record<any, any> = {};
 
   constructor(name: string) {
@@ -37,14 +38,15 @@ export default class SnapshotSandbox implements SandBox {
     this.type = SandBoxType.Snapshot;
   }
 
+  // 激活沙箱 浅拷贝一份window对象
   active() {
-    // 记录当前快照
+    console.log(123123);
     this.windowSnapshot = {} as Window;
     iter(window, (prop) => {
       this.windowSnapshot[prop] = window[prop];
     });
 
-    // 恢复之前的变更
+    // 激活沙箱 判断之前是否变更过window属性，
     Object.keys(this.modifyPropsMap).forEach((p: any) => {
       window[p] = this.modifyPropsMap[p];
     });
@@ -52,14 +54,15 @@ export default class SnapshotSandbox implements SandBox {
     this.sandboxRunning = true;
   }
 
+  // 沙箱失活 还原window所有属性
   inactive() {
     this.modifyPropsMap = {};
 
     iter(window, (prop) => {
+      // 判断window是否与之前快照的不一致，如果不一致则将记录都保存在modifyPropsMap中，再次激活沙箱时调用
       if (window[prop] !== this.windowSnapshot[prop]) {
-        // 记录变更，恢复环境
         this.modifyPropsMap[prop] = window[prop];
-        window[prop] = this.windowSnapshot[prop];
+        window[prop] = this.windowSnapshot[prop]; // 还原window
       }
     });
 

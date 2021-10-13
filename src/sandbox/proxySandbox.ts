@@ -187,7 +187,7 @@ export default class ProxySandbox implements SandBox {
 
     // 默认原生window对象
     const rawWindow = globalContext;
-    // fake window对象
+    // fakeWindow对象 propertiesWithGetter判断属性是否可以get
     const { fakeWindow, propertiesWithGetter } = createFakeWindow(rawWindow);
     // console.log(fakeWindow);
 
@@ -205,7 +205,7 @@ export default class ProxySandbox implements SandBox {
             const descriptor = Object.getOwnPropertyDescriptor(rawWindow, p);
             const { writable, configurable, enumerable } = descriptor!;
             if (writable) {
-              // 给fakeWindow设置上
+              // 给fakeWindow设置上value
               Object.defineProperty(target, p, {
                 configurable,
                 enumerable,
@@ -242,36 +242,27 @@ export default class ProxySandbox implements SandBox {
       get: (target: FakeWindow, p: PropertyKey): any => {
         this.registerRunningApp(name, proxy);
 
+        // 对顶层对象的一些判断，直接返回window
         if (p === Symbol.unscopables) return unscopables;
-        // avoid who using window.window or window.self to escape the sandbox environment to touch the really window
-        // see https://github.com/eligrey/FileSaver.js/blob/master/src/FileSaver.js#L13
         if (p === 'window' || p === 'self') {
           return proxy;
         }
-
-        // hijack globalWindow accessing with globalThis keyword
         if (p === 'globalThis') {
           return proxy;
         }
-
         if (
           p === 'top' ||
           p === 'parent' ||
           (process.env.NODE_ENV === 'test' && (p === 'mockTop' || p === 'mockSafariTop'))
         ) {
-          // if your master app in an iframe context, allow these props escape the sandbox
           if (rawWindow === rawWindow.parent) {
             return proxy;
           }
           return (rawWindow as any)[p];
         }
-
-        // proxy.hasOwnProperty would invoke getter firstly, then its value represented as rawWindow.hasOwnProperty
         if (p === 'hasOwnProperty') {
           return hasOwnProperty;
         }
-
-        // mark the symbol to document while accessing as document.createElement could know is invoked by which sandbox for dynamic append patcher
         if (p === 'document' || p === 'eval') {
           switch (p) {
             case 'document':
@@ -283,6 +274,7 @@ export default class ProxySandbox implements SandBox {
           }
         }
 
+        // 获取value 判断fakeWindow是否存在属性，不存在则从rawWindow上取
         // eslint-disable-next-line no-nested-ternary
         const value = propertiesWithGetter.has(p)
           ? (rawWindow as any)[p]
