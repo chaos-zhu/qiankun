@@ -272,22 +272,24 @@ export async function loadApp<T extends ObjectType>(
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // 生成 子应用容器包裹dom
+  // 子应用容器包裹一层dom <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
-  console.log('appContent: \n', appContent); // 包含了html根元素
+  // console.log('appContent: \n', appContent); // 包含了html根元素
   
   // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
   // scope css隔离
   const scopedCSS = isEnableScopedCSS(sandbox);
-  // 生成最终的子应用Dom 
+
+  // 判断是否开启样式严格隔离，则将 appContent 的子元素即微应用入口模版用 shadow dom 包裹起来
   let initialAppWrapperElement: HTMLElement | null = createElement(
     appContent,
     strictStyleIsolation,
     scopedCSS,
     appName,
   );
-  console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
+  // console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
+  // debugger;
 
   const initialContainer = 'container' in app ? app.container : undefined;
 
