@@ -199,22 +199,22 @@ export default class ProxySandbox implements SandBox {
         if (this.sandboxRunning) {
           // 记录正在运行的沙箱
           this.registerRunningApp(name, proxy);
-
           // 不存在于fakeWindow而存在rawWindow上的属性
           if (!target.hasOwnProperty(p) && rawWindow.hasOwnProperty(p)) {
             const descriptor = Object.getOwnPropertyDescriptor(rawWindow, p);
             const { writable, configurable, enumerable } = descriptor!;
             if (writable) {
+              // 使用Object.defineProperty设置value是为了保证window对象的默认行为一致
               // 给fakeWindow设置上value
               Object.defineProperty(target, p, {
-                configurable,
+                configurable, // 如果为false再设置成true是会报错的
                 enumerable,
                 writable,
                 value,
               });
             }
           } else {
-            // rawWindow上不存在说明非原生属性，直接set在fakeWindow
+            // rawWindow上不存在说明非原生属性(或不可配置属性)，直接set在fakeWindow
             // @ts-ignore
             target[p] = value;
           }

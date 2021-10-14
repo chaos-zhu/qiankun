@@ -32,14 +32,6 @@ export function patchLooseSandbox(
   let dynamicStyleSheetElements: Array<HTMLLinkElement | HTMLStyleElement> = [];
 
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
-    /*
-      check if the currently specified application is active
-      While we switch page from qiankun app to a normal react routing page, the normal one may load stylesheet dynamically while page rendering,
-      but the url change listener must to wait until the current call stack is flushed.
-      This scenario may cause we record the stylesheet from react routing page dynamic injection,
-      and remove them after the url change triggered and qiankun app is unmouting
-      see https://github.com/ReactTraining/history/blob/master/modules/createHashHistory.js#L222-L230
-     */
     () => checkActivityFunctions(window.location).some((name) => name === appName),
     () => ({
       appName,

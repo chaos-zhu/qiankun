@@ -31,14 +31,15 @@ export { getCurrentRunningApp } from './common';
  * @param globalContext
  */
 export function createSandboxContainer(
-  appName: string,
-  elementGetter: () => HTMLElement | ShadowRoot,
+  appName: string, // 子应用名称
+  elementGetter: () => HTMLElement | ShadowRoot, // 子应用根目录
   scopedCSS: boolean,
   useLooseSandbox?: boolean, // 默认false
-  excludeAssetFilter?: (url: string) => boolean,
+  excludeAssetFilter?: (url: string) => boolean, // 不被qiankun劫持的特殊css/js
   globalContext?: typeof window,
 ) {
   let sandbox: SandBox;
+  // js 沙箱
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
     // ProxySandbox：多实例沙箱
@@ -49,9 +50,8 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // some side effect could be be invoked while bootstrapping, such as dynamic stylesheet injection with style-loader, especially during the development phase
+  // css 沙箱
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
-  // mounting freers are one-off and should be re-init at every mounting time
   let mountingFreers: Freer[] = [];
 
   let sideEffectsRebuilders: Rebuilder[] = [];
@@ -65,15 +65,10 @@ export function createSandboxContainer(
      * 也可能是从 unmount 之后再次唤醒进入 mount
      */
     async mount() {
-      /* ------------------------------------------ 因为有上下文依赖（window），以下代码执行顺序不能变 ------------------------------------------ */
-
-      /* ------------------------------------------ 1. 启动/恢复 沙箱------------------------------------------ */
       sandbox.active(); // 激活沙箱
-
       const sideEffectsRebuildersAtBootstrapping = sideEffectsRebuilders.slice(0, bootstrappingFreers.length);
       const sideEffectsRebuildersAtMounting = sideEffectsRebuilders.slice(bootstrappingFreers.length);
-
-      // must rebuild the side effects which added at bootstrapping firstly to recovery to nature state
+      // 子应用切换重新rebuild 缓存的 css 
       if (sideEffectsRebuildersAtBootstrapping.length) {
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }

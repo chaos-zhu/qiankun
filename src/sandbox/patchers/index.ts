@@ -42,6 +42,7 @@ export function patchAtMounting(
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());
 }
 
+// 初始化阶段给 createElement、appendChild、insertBefore 三个方法打一个 patch
 export function patchAtBootstrapping(
   appName: string,
   elementGetter: () => HTMLElement | ShadowRoot,
@@ -49,6 +50,7 @@ export function patchAtBootstrapping(
   scopedCSS: boolean,
   excludeAssetFilter?: CallableFunction,
 ): Freer[] {
+  // 打补丁？
   const patchersInSandbox = {
     [SandBoxType.LegacyProxy]: [
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
@@ -60,7 +62,6 @@ export function patchAtBootstrapping(
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
   };
-
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());
 }
 

@@ -61,13 +61,21 @@ export function registerMicroApps<T extends ObjectType>(
         loader(true);
         // 等待调用start才开始加载子应用
         await frameworkStartedDefer.promise;
-        
+
         // {prefetch: true, singular: true, sandbox: true}
         // console.log('frameworkConfiguration:', frameworkConfiguration);
 
         const { mount, ...otherMicroAppConfigs } = (
-          // 加载应用的content【主要】
           // console.log(appConfig); // {entry: '//localhost:7100', container: '#subapp-viewport'}
+          // * 完成了以下几件事：
+          // *  1、通过 HTML-Entry加载微应用，得到微应用的 html 模版（首屏内容）、JS 脚本执行器、静态经资源路径
+          // *  2、样式隔离，shadow DOM 或者 scoped css 两种方式
+          // *  3、渲染微应用
+          // *  4、运行时沙箱，JS 沙箱、样式沙箱
+          // *  5、合并沙箱传递出来的 生命周期方法、用户传递的生命周期方法、框架内置的生命周期方法，将这些生命周期方法统一整理，导出一个生命周期对象，
+          //       供 single-spa 的 registerApplication 方法使用，这个对象就相当于使用 single-spa 时你的微应用导出的那些生命周期方法，只不过 qiankun
+          //       额外填了一些生命周期方法，做了一些事情
+          // *  6、给微应用注册通信方法并返回通信方法，然后会将通信方法通过 props 注入到微应用
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
         // return 一系列生命周期供single-spa调用
@@ -202,6 +210,7 @@ export function loadMicroApp<T extends ObjectType>(
 
 // 开始子应用加载
 export function start(opts: FrameworkConfiguration = {}) {
+  // 默认值设置
   frameworkConfiguration = { prefetch: true, singular: true, sandbox: true, ...opts };
   const {
     prefetch,

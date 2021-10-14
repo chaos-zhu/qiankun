@@ -265,24 +265,22 @@ export async function loadApp<T extends ObjectType>(
   console.log('execScripts:  \n', execScripts); // 执行template中所有的js
   console.log('assetPublicPath:  \n', assetPublicPath);
 
-  // 单实例模式时 需等待上一个应用卸载
+  // 单实例模式时 需等待上一个应用卸载(unmount时 resolve)
   // console.log(singular); // 默认true
   if (await validateSingularMode(singular, app)) {
     // await undefined 无影响
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // console.log('prevAppUnmountedDeferred: ', prevAppUnmountedDeferred); // 切换子应用时才有值？
-
   // 生成 子应用容器包裹dom
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
-  // console.log('appContent: \n', appContent); // 包含了html根元素
+  console.log('appContent: \n', appContent); // 包含了html根元素
   
   // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
-  // 普通css隔离
+  // scope css隔离
   const scopedCSS = isEnableScopedCSS(sandbox);
-  // 生成最终的子应用Dom
+  // 生成最终的子应用Dom 
   let initialAppWrapperElement: HTMLElement | null = createElement(
     appContent,
     strictStyleIsolation,
@@ -301,6 +299,7 @@ export async function loadApp<T extends ObjectType>(
   // throw Error('👆 插入移除style&script后的html');
 
   // Getter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
+  // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
   const initialAppWrapperGetter = getAppWrapperGetter(
     appName,
     appInstanceId,
@@ -317,7 +316,7 @@ export async function loadApp<T extends ObjectType>(
   let unmountSandbox = () => Promise.resolve();
   const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
-  // 注册沙箱 (关闭沙箱将会对整个window变量产生污染)
+  // 注册沙箱 (包含js执行沙箱和css隔离沙箱)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,
