@@ -279,7 +279,7 @@ export async function loadApp<T extends ObjectType>(
   // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
   // scope css隔离
-  const scopedCSS = isEnableScopedCSS(sandbox);
+  const scopedCSS = isEnableScopedCSS(sandbox); // 默认false
 
   // 判断是否开启样式严格隔离，则将 appContent 的子元素即微应用入口模版用 shadow dom 包裹起来
   let initialAppWrapperElement: HTMLElement | null = createElement(
