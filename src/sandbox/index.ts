@@ -50,7 +50,7 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // css 沙箱
+  // 劫持操作DOM的api(性能优化)
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
   let mountingFreers: Freer[] = [];
 
@@ -73,17 +73,14 @@ export function createSandboxContainer(
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }
 
-      /* ------------------------------------------ 2. 开启全局变量补丁 ------------------------------------------*/
-      // render 沙箱启动时开始劫持各类全局监听，尽量不要在应用初始化阶段有 事件监听/定时器 等副作用
+      // 全局变量补丁, 防止内存泄露
       mountingFreers = patchAtMounting(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
 
-      /* ------------------------------------------ 3. 重置一些初始化时的副作用 ------------------------------------------*/
-      // 存在 rebuilder 则表明有些副作用需要重建
       if (sideEffectsRebuildersAtMounting.length) {
         sideEffectsRebuildersAtMounting.forEach((rebuild) => rebuild());
       }
 
-      // clean up rebuilders
+      // 激活后清空缓存,
       sideEffectsRebuilders = [];
     },
 
@@ -91,8 +88,7 @@ export function createSandboxContainer(
      * 恢复 global 状态，使其能回到应用加载之前的状态
      */
     async unmount() {
-      // record the rebuilders of window side effects (event listeners or timers)
-      // note that the frees of mounting phase are one-off as it will be re-init at next mounting
+      // 失活时重新添加缓存
       sideEffectsRebuilders = [...bootstrappingFreers, ...mountingFreers].map((free) => free());
 
       sandbox.inactive();

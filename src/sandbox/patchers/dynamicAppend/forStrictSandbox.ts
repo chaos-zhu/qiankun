@@ -37,6 +37,7 @@ function patchDocumentCreateElement() {
   const docCreateElementFnBeforeOverwrite = docCreatePatchedMap.get(document.createElement);
 
   if (!docCreateElementFnBeforeOverwrite) {
+    // 劫持原生document.createElement方法
     const rawDocumentCreateElement = document.createElement;
     Document.prototype.createElement = function createElement<K extends keyof HTMLElementTagNameMap>(
       this: Document,
@@ -47,6 +48,7 @@ function patchDocumentCreateElement() {
       if (isHijackingTag(tagName)) {
         const { window: currentRunningSandboxProxy } = getCurrentRunningApp() || {};
         if (currentRunningSandboxProxy) {
+          // 将所有动态创建的style、link、script标签内容缓存起来
           const proxyContainerConfig = proxyAttachContainerConfigMap.get(currentRunningSandboxProxy);
           if (proxyContainerConfig) {
             elementAttachContainerConfigMap.set(element, proxyContainerConfig);
@@ -57,7 +59,6 @@ function patchDocumentCreateElement() {
       return element;
     };
 
-    // It means it have been overwritten while createElement is an own property of document
     if (document.hasOwnProperty('createElement')) {
       document.createElement = Document.prototype.createElement;
     }
@@ -66,6 +67,7 @@ function patchDocumentCreateElement() {
   }
 
   return function unpatch() {
+    // 取消劫持
     if (docCreateElementFnBeforeOverwrite) {
       Document.prototype.createElement = docCreateElementFnBeforeOverwrite;
       document.createElement = docCreateElementFnBeforeOverwrite;
@@ -85,6 +87,9 @@ export function patchStrictSandbox(
   excludeAssetFilter?: CallableFunction,
 ): Freer {
   let containerConfig = proxyAttachContainerConfigMap.get(proxy);
+  // console.log('containerConfig: \n', containerConfig);
+  // debugger;
+
   if (!containerConfig) {
     containerConfig = {
       appName,
@@ -97,11 +102,15 @@ export function patchStrictSandbox(
     };
     proxyAttachContainerConfigMap.set(proxy, containerConfig);
   }
-  // all dynamic style sheets are stored in proxy container
-  const { dynamicStyleSheetElements } = containerConfig;
 
+  // 动态插入的style list
+  const { dynamicStyleSheetElements } = containerConfig;
+  // dynamicStyleSheetElements: (3) [style, style, style]
+
+  // 劫持原生DocumentCreateElement方法，返回取消劫持方法
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
+  // 劫持一系列其他原生方法
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,
@@ -110,23 +119,20 @@ export function patchStrictSandbox(
   if (!mounting) bootstrappingPatchCount++;
   if (mounting) mountingPatchCount++;
 
+  // 初始化完成后返回 free 函数
   return function free() {
-    // bootstrap patch just called once but its freer will be called multiple times
     if (!mounting && bootstrappingPatchCount !== 0) bootstrappingPatchCount--;
     if (mounting) mountingPatchCount--;
 
     const allMicroAppUnmounted = mountingPatchCount === 0 && bootstrappingPatchCount === 0;
-    // release the overwrite prototype after all the micro apps unmounted
+    // 清除原生方法劫持、缓存动态添加的样式、返回 rebuild 函数
     if (allMicroAppUnmounted) {
       unpatchDynamicAppendPrototypeFunctions();
       unpatchDocumentCreate();
     }
-
     recordStyledComponentsCSSRules(dynamicStyleSheetElements);
 
-    // As now the sub app content all wrapped with a special id container,
-    // the dynamic style sheet would be removed automatically while unmoutting
-
+    // 子应用重新构建时从缓存中加载css
     return function rebuild() {
       rebuildCSSRules(dynamicStyleSheetElements, (stylesheetElement) => {
         const appWrapper = appWrapperGetter();
@@ -134,7 +140,6 @@ export function patchStrictSandbox(
           rawHeadAppendChild.call(appWrapper, stylesheetElement);
           return true;
         }
-
         return false;
       });
     };

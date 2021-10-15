@@ -19,12 +19,14 @@ export default function patch(global: Window) {
 
   global.setInterval = (handler: CallableFunction, timeout?: number, ...args: any[]) => {
     const intervalId = rawWindowInterval(handler, timeout, ...args);
+    // 记录所有定时器ID
     intervals = [...intervals, intervalId];
     return intervalId;
   };
 
   return function free() {
-    intervals.forEach((id) => global.clearInterval(id));
+    intervals.forEach((id) => global.clearInterval(id)); // 卸载子应用时清空所有定时器
+    // 还原setInterval
     global.setInterval = rawWindowInterval;
     global.clearInterval = rawWindowClearInterval;
 

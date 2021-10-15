@@ -18,6 +18,7 @@ export default function patch(global: WindowProxy) {
     options?: boolean | AddEventListenerOptions,
   ) => {
     const listeners = listenerMap.get(type) || [];
+    // 记录事件监听
     listenerMap.set(type, [...listeners, listener]);
     return rawAddEventListener.call(window, type, listener, options);
   };
@@ -35,6 +36,7 @@ export default function patch(global: WindowProxy) {
   };
 
   return function free() {
+    // 移除所有事件监听
     listenerMap.forEach((listeners, type) =>
       [...listeners].forEach((listener) => global.removeEventListener(type, listener)),
     );

@@ -11,6 +11,7 @@ import patchHistoryListener from './historyListener';
 import patchInterval from './interval';
 import patchWindowListener from './windowListener';
 
+// 全局变量补丁
 export function patchAtMounting(
   appName: string,
   elementGetter: () => HTMLElement | ShadowRoot,
@@ -18,10 +19,11 @@ export function patchAtMounting(
   scopedCSS: boolean,
   excludeAssetFilter?: CallableFunction,
 ): Freer[] {
+  // 防止内存泄漏
   const basePatchers = [
-    () => patchInterval(sandbox.proxy),
-    () => patchWindowListener(sandbox.proxy),
-    () => patchHistoryListener(),
+    () => patchInterval(sandbox.proxy), // 定时器劫持
+    () => patchWindowListener(sandbox.proxy), // 事件监听劫持
+    () => patchHistoryListener(), // 修复umi的bug, 不管
   ];
 
   const patchersInSandbox = {
@@ -39,6 +41,7 @@ export function patchAtMounting(
     ],
   };
 
+  // 返回unpatch 还原函数
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());
 }
 
@@ -50,18 +53,21 @@ export function patchAtBootstrapping(
   scopedCSS: boolean,
   excludeAssetFilter?: CallableFunction,
 ): Freer[] {
-  // 打补丁？
   const patchersInSandbox = {
+    // 一般不会进来这里
     [SandBoxType.LegacyProxy]: [
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
+    // 支持window.proxy
     [SandBoxType.Proxy]: [
       () => patchStrictSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
+    // 快照沙箱
     [SandBoxType.Snapshot]: [
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
   };
+  // 返回free方法，调用返回rebuild方法【优化】
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());
 }
 

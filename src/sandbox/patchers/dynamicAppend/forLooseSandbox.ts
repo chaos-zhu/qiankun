@@ -47,33 +47,28 @@ export function patchLooseSandbox(
   if (!mounting) bootstrappingPatchCount++;
   if (mounting) mountingPatchCount++;
 
+  // 返回取消劫持部分原生api的方法
   return function free() {
-    // bootstrap patch just called once but its freer will be called multiple times
     if (!mounting && bootstrappingPatchCount !== 0) bootstrappingPatchCount--;
     if (mounting) mountingPatchCount--;
 
     const allMicroAppUnmounted = mountingPatchCount === 0 && bootstrappingPatchCount === 0;
-    // release the overwrite prototype after all the micro apps unmounted
     if (allMicroAppUnmounted) unpatchDynamicAppendPrototypeFunctions();
 
+    // 记录加载过的子应用css
     recordStyledComponentsCSSRules(dynamicStyleSheetElements);
 
-    // As now the sub app content all wrapped with a special id container,
-    // the dynamic style sheet would be removed automatically while unmoutting
-
+    // 重新切换已经加载过的子应用时调用rebuild，不需要重新加载css【优化】
     return function rebuild() {
       rebuildCSSRules(dynamicStyleSheetElements, (stylesheetElement) => {
         const appWrapper = appWrapperGetter();
         if (!appWrapper.contains(stylesheetElement)) {
-          // Using document.head.appendChild ensures that appendChild invocation can also directly use the HTMLHeadElement.prototype.appendChild method which is overwritten at mounting phase
           document.head.appendChild.call(appWrapper, stylesheetElement);
           return true;
         }
-
         return false;
       });
 
-      // As the patcher will be invoked every mounting phase, we could release the cache for gc after rebuilding
       if (mounting) {
         dynamicStyleSheetElements = [];
       }

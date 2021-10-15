@@ -146,6 +146,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     newChild: T,
     refChild?: Node | null,
   ) {
+    // 动态加载的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
     if (!isHijackingTag(element.tagName) || !isInvokedByMicroApp(element)) {
@@ -166,6 +167,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
 
       switch (element.tagName) {
         case LINK_TAG_NAME:
+        // 动态加入的style标签劫持
         case STYLE_TAG_NAME: {
           let stylesheetElement: HTMLLinkElement | HTMLStyleElement = newChild as any;
           const { href } = stylesheetElement as HTMLLinkElement;
@@ -182,6 +184,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
               (element as HTMLLinkElement).rel === 'stylesheet' &&
               (element as HTMLLinkElement).href;
             if (linkElementUsingStylesheet) {
+              // 判断是否使用用户自定义的fetch加载sytle/script等资源
               const fetch =
                 typeof frameworkConfiguration.fetch === 'function'
                   ? frameworkConfiguration.fetch
@@ -197,6 +200,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
             }
           }
 
+          // 添加到map, 下次加载时直接从缓存这里取出来
           // eslint-disable-next-line no-shadow
           dynamicStyleSheetElements.push(stylesheetElement);
           const referenceNode = mountDOM.contains(refChild) ? refChild : null;
@@ -205,7 +209,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
 
         case SCRIPT_TAG_NAME: {
           const { src, text } = element as HTMLScriptElement;
-          // some script like jsonp maybe not support cors which should't use execScripts
+          // jsonp请求额外处理...
           if (excludeAssetFilter && src && excludeAssetFilter(src)) {
             return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
           }
@@ -215,6 +219,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           const referenceNode = mountDOM.contains(refChild) ? refChild : null;
 
           if (src) {
+            // 执行动态加载script 全局环境为proxy
             execScripts(null, [src], proxy, {
               fetch,
               strictGlobal,
@@ -242,6 +247,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
               },
             });
 
+            // 劫持的异步script(例如vue-router的按需加载)
             const dynamicScriptCommentElement = document.createComment(`dynamic script ${src} replaced by qiankun`);
             dynamicScriptAttachedCommentMap.set(element, dynamicScriptCommentElement);
             return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicScriptCommentElement, referenceNode);
@@ -267,6 +273,7 @@ function getNewRemoveChild(
   headOrBodyRemoveChild: typeof HTMLElement.prototype.removeChild,
   appWrapperGetterGetter: (element: HTMLElement) => ContainerConfig['appWrapperGetter'],
 ) {
+  // 移除dom(判断是从主应用中移除还是从子应用移除)
   return function removeChild<T extends Node>(this: HTMLHeadElement | HTMLBodyElement, child: T) {
     const { tagName } = child as any;
     if (!isHijackingTag(tagName)) return headOrBodyRemoveChild.call(this, child) as T;
@@ -307,12 +314,13 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
   isInvokedByMicroApp: (element: HTMLElement) => boolean,
   containerConfigGetter: (element: HTMLElement) => ContainerConfig,
 ) {
-  // Just overwrite it while it have not been overwrite
+  // 判断是否重写过appendChild/insertBefore
   if (
     HTMLHeadElement.prototype.appendChild === rawHeadAppendChild &&
     HTMLBodyElement.prototype.appendChild === rawBodyAppendChild &&
     HTMLHeadElement.prototype.insertBefore === rawHeadInsertBefore
   ) {
+    // 劫持 appendChild(决定 link、style、script 元素的插入位置是在主应用还是微应用)
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadAppendChild,
       containerConfigGetter,
@@ -324,6 +332,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
       isInvokedByMicroApp,
     }) as typeof rawBodyAppendChild;
 
+    // 劫持 insertBefore
     HTMLHeadElement.prototype.insertBefore = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadInsertBefore as any,
       containerConfigGetter,
