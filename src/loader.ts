@@ -261,9 +261,9 @@ export async function loadApp<T extends ObjectType>(
   // get the entry html content and script executor
   // console.log(importEntryOpts); // {prefetch: true}
   const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
-  console.log('template: \n', template);
+  console.log('template: \n', template); // 外联的css加载后被内联
   console.log('execScripts:  \n', execScripts); // 执行template中所有的js
-  console.log('assetPublicPath:  \n', assetPublicPath);
+  console.log('assetPublicPath:  \n', assetPublicPath); // 公共路径
 
   // 单实例模式时 需等待上一个应用卸载(unmount时 resolve)
   // console.log(singular); // 默认true
@@ -289,7 +289,7 @@ export async function loadApp<T extends ObjectType>(
     appName,
   );
   // console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
-  // debugger;
+  debugger;
 
   const initialContainer = 'container' in app ? app.container : undefined;
 
