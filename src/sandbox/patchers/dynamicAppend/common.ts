@@ -355,6 +355,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     );
   }
 
+  // 取消劫持 unpatch
   return function unpatch() {
     HTMLHeadElement.prototype.appendChild = rawHeadAppendChild;
     HTMLHeadElement.prototype.removeChild = rawHeadRemoveChild;

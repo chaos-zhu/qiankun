@@ -58,7 +58,7 @@ export function patchAtBootstrapping(
     [SandBoxType.LegacyProxy]: [
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
-    // 支持window.proxy
+    // 支持window.proxy 单实例主要执行这里
     [SandBoxType.Proxy]: [
       () => patchStrictSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],

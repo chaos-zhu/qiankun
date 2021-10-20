@@ -69,7 +69,6 @@ function createElement(
 ): HTMLElement {
   const containerElement = document.createElement('div');
   containerElement.innerHTML = appContent;
-  // appContent always wrapped with a singular div
   const appElement = containerElement.firstChild as HTMLElement;
   // 为true 且浏览器支持shadow dom 返回以shadow dom包裹的DOM结构
   if (strictStyleIsolation) {
@@ -85,20 +84,20 @@ function createElement(
       if (appElement.attachShadow) {
         shadow = appElement.attachShadow({ mode: 'open' });
       } else {
-        // createShadowRoot was proposed in initial spec, which has then been deprecated
+        // 废弃的创建shadow dom api
         shadow = (appElement as any).createShadowRoot();
       }
       shadow.innerHTML = innerHTML;
     }
   }
 
-  // forEach没看明白?
   if (scopedCSS) {
     const attr = appElement.getAttribute(css.QiankunCSSRewriteAttr);
     if (!attr) {
       appElement.setAttribute(css.QiankunCSSRewriteAttr, appName);
     }
 
+    // 为每一个style节点下的选择器添加 scoped 前缀
     const styleNodes = appElement.querySelectorAll('style') || [];
     forEach(styleNodes, (stylesheetElement: HTMLStyleElement) => {
       css.process(appElement!, stylesheetElement, appName);
@@ -184,13 +183,12 @@ function getRender(appName: string, appContent: string, legacyRender?: HTMLConte
     }
 
     if (containerElement && !containerElement.contains(element)) {
-      // 清空子应用容器内容
+      // 容器中有子元素先清空子应用容器内容
       while (containerElement!.firstChild) {
         rawRemoveChild.call(containerElement, containerElement!.firstChild);
       }
-      // 插入 html template 到 子应用容器
+      // 再把 html template 插入到 子应用容器
       if (element) {
-        // console.log('element: ', element);
         rawAppendChild.call(containerElement, element);
       }
     }
@@ -272,16 +270,17 @@ export async function loadApp<T extends ObjectType>(
     await (prevAppUnmountedDeferred && prevAppUnmountedDeferred.promise);
   }
 
-  // 子应用容器包裹一层dom <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
+  // 子应用容器包裹一层dom【为scoped css隔离方案预备用】
+  // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
   const appContent = getDefaultTplWrapper(appInstanceId, appName)(template);
   // console.log('appContent: \n', appContent); // 包含了html根元素
   
   // 是否开启shadow dom css隔离
-  const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation;
-  // scope css隔离
+  const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation; // 默认false
+  // 是否启用scope css隔离【注意：开启strictStyleIsolation优先级更高】
   const scopedCSS = isEnableScopedCSS(sandbox); // 默认false
 
-  // 判断是否开启样式严格隔离，则将 appContent 的子元素即微应用入口模版用 shadow dom 包裹起来
+  // 判断是否开启css隔离，则将 appContent 的子元素即微应用入口模版用 shadow dom 包裹起来
   let initialAppWrapperElement: HTMLElement | null = createElement(
     appContent,
     strictStyleIsolation,
@@ -289,7 +288,7 @@ export async function loadApp<T extends ObjectType>(
     appName,
   );
   // console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
-  debugger;
+  // debugger;
 
   const initialContainer = 'container' in app ? app.container : undefined;
 
@@ -298,9 +297,7 @@ export async function loadApp<T extends ObjectType>(
   const render = getRender(appName, appContent, legacyRender);
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
 
-  // throw Error('👆 插入移除style&script后的html');
-
-  // Getter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
+  // getAppWrapperGetter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
   // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
   const initialAppWrapperGetter = getAppWrapperGetter(
     appName,
@@ -312,11 +309,11 @@ export async function loadApp<T extends ObjectType>(
   );
   // console.log('initialAppWrapperGetter: \n', initialAppWrapperGetter());
 
-  // js 沙箱运行环境
-  let global = globalContext;
+  // 开始处理 运行沙箱
+  let global = globalContext; // 全局环境 window
   let mountSandbox = () => Promise.resolve();
   let unmountSandbox = () => Promise.resolve();
-  const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
+  const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose; // loose 已废弃
   let sandboxContainer;
   // 注册沙箱 (包含js执行沙箱和css隔离沙箱)
   if (sandbox) {

@@ -41,6 +41,7 @@ export class ScopedCSS {
   }
 
   process(styleNode: HTMLStyleElement, prefix: string = '') {
+    // 动态的给每个样式tag 加 div[data-qian-appName] 前缀
     if (styleNode.textContent !== '') {
       const textNode = document.createTextNode(styleNode.textContent || '');
       this.swapNode.appendChild(textNode);
@@ -55,6 +56,7 @@ export class ScopedCSS {
       return;
     }
 
+    // 监听style节点 子节点更新
     const mutator = new MutationObserver((mutations) => {
       for (let i = 0; i < mutations.length; i += 1) {
         const mutation = mutations[i];
@@ -189,6 +191,7 @@ export const process = (
     processor = new ScopedCSS();
   }
 
+  // link 经过entry-html处理一般不会存在
   if (stylesheetElement.tagName === 'LINK') {
     console.warn('Feature: sandbox.experimentalStyleIsolation is not support for link element yet.');
   }
@@ -200,6 +203,7 @@ export const process = (
 
   const tag = (mountDOM.tagName || '').toLowerCase();
 
+  // 动态样式表 给每个选择器加特定前缀 实现多实例样式隔离
   if (tag && stylesheetElement.tagName === 'STYLE') {
     const prefix = `${tag}[${QiankunCSSRewriteAttr}="${appName}"]`;
     processor.process(stylesheetElement, prefix);

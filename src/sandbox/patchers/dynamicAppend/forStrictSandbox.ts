@@ -37,7 +37,7 @@ function patchDocumentCreateElement() {
   const docCreateElementFnBeforeOverwrite = docCreatePatchedMap.get(document.createElement);
 
   if (!docCreateElementFnBeforeOverwrite) {
-    // 劫持原生document.createElement方法
+    // 劫持原生 document.createElement 方法
     const rawDocumentCreateElement = document.createElement;
     Document.prototype.createElement = function createElement<K extends keyof HTMLElementTagNameMap>(
       this: Document,
@@ -103,11 +103,11 @@ export function patchStrictSandbox(
     proxyAttachContainerConfigMap.set(proxy, containerConfig);
   }
 
-  // 动态插入的style list
+  // 动态插入的style arrayList
   const { dynamicStyleSheetElements } = containerConfig;
   // dynamicStyleSheetElements: (3) [style, style, style]
 
-  // 劫持原生DocumentCreateElement方法，返回取消劫持方法
+  // 劫持原生DocumentCreateElement方法，(优化)缓存动态style、link标签，返回取消劫持方法
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
   // 劫持一系列其他原生方法

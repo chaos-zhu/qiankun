@@ -167,11 +167,12 @@ export function isEnableScopedCSS(sandbox: FrameworkConfiguration['sandbox']) {
     return false;
   }
 
+  // 开启stric css隔离，scopedCss隔离被禁用
   if (sandbox.strictStyleIsolation) {
     return false;
   }
 
-  return !!sandbox.experimentalStyleIsolation;
+  return !!sandbox.experimentalStyleIsolation; // 实验性质的scopedCss方案，[data-xxx]
 }
 
 /**
