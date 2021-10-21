@@ -50,7 +50,7 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // 1. 劫持操作style、link的api，缓存动态插入部分(优化)
+  // 1. 劫持操作style、link等tag的api，缓存动态插入部分(优化)
   // 2. 返回free函数，调用unpatch
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
   let mountingFreers: Freer[] = [];

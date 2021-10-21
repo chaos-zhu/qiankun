@@ -40,17 +40,21 @@ function patchDocumentCreateElement() {
     // 劫持原生 document.createElement 方法
     const rawDocumentCreateElement = document.createElement;
     Document.prototype.createElement = function createElement<K extends keyof HTMLElementTagNameMap>(
-      this: Document,
+      this: Document, // ts 特性；编译后不存在
       tagName: K,
       options?: ElementCreationOptions,
     ): HTMLElement {
+      // 调用原生方法创建dom
       const element = rawDocumentCreateElement.call(this, tagName, options);
+      // 判断dom tag为sytle、link、script
       if (isHijackingTag(tagName)) {
         const { window: currentRunningSandboxProxy } = getCurrentRunningApp() || {};
         if (currentRunningSandboxProxy) {
-          // 将所有动态创建的style、link、script标签内容缓存起来
+          // 从全局状态中取出当前沙箱配置
           const proxyContainerConfig = proxyAttachContainerConfigMap.get(currentRunningSandboxProxy);
+          console.log(proxyContainerConfig);
           if (proxyContainerConfig) {
+            // 设置到弱引用Map中
             elementAttachContainerConfigMap.set(element, proxyContainerConfig);
           }
         }
@@ -66,8 +70,8 @@ function patchDocumentCreateElement() {
     docCreatePatchedMap.set(Document.prototype.createElement, rawDocumentCreateElement);
   }
 
+  // 返回unpatch 取消劫持
   return function unpatch() {
-    // 取消劫持
     if (docCreateElementFnBeforeOverwrite) {
       Document.prototype.createElement = docCreateElementFnBeforeOverwrite;
       document.createElement = docCreateElementFnBeforeOverwrite;
@@ -111,6 +115,7 @@ export function patchStrictSandbox(
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
   // 劫持一系列其他原生方法
+  // 将所有动态创建的style、link、script标签内容缓存起来【优化】
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,

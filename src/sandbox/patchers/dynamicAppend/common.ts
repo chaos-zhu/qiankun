@@ -149,6 +149,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     // 动态加载的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
+    // 非style、link、script直接插入
     if (!isHijackingTag(element.tagName) || !isInvokedByMicroApp(element)) {
       return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
     }
@@ -160,7 +161,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         appWrapperGetter,
         proxy,
         strictGlobal,
-        dynamicStyleSheetElements,
+        dynamicStyleSheetElements, // 当前实例动态插入的css list
         scopedCSS,
         excludeAssetFilter,
       } = containerConfig;
@@ -177,6 +178,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
 
           const mountDOM = appWrapperGetter();
 
+          // 设置scoped css隔离
           if (scopedCSS) {
             // exclude link elements like <link rel="icon" href="favicon.ico">
             const linkElementUsingStylesheet =
@@ -200,16 +202,15 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
             }
           }
 
-          // 添加到map, 下次加载时直接从缓存这里取出来
           // eslint-disable-next-line no-shadow
-          dynamicStyleSheetElements.push(stylesheetElement);
+          dynamicStyleSheetElements.push(stylesheetElement); // push到css list中, 下次加载时直接从这里取出来！
           const referenceNode = mountDOM.contains(refChild) ? refChild : null;
           return rawDOMAppendOrInsertBefore.call(mountDOM, stylesheetElement, referenceNode);
         }
 
+        // 缓存逻辑同style加载
         case SCRIPT_TAG_NAME: {
           const { src, text } = element as HTMLScriptElement;
-          // jsonp请求额外处理...
           if (excludeAssetFilter && src && excludeAssetFilter(src)) {
             return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
           }
@@ -219,7 +220,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           const referenceNode = mountDOM.contains(refChild) ? refChild : null;
 
           if (src) {
-            // 执行动态加载script 全局环境为proxy
+            // 执行动态加载的script 全局环境为proxy
             execScripts(null, [src], proxy, {
               fetch,
               strictGlobal,
@@ -238,16 +239,18 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
                 }
               },
               success: () => {
+                // 脚本执行完成 手动触发script load event
                 manualInvokeElementOnLoad(element);
                 element = null;
               },
               error: () => {
+                // 脚本执行出错 手动触发script error event
                 manualInvokeElementOnError(element);
                 element = null;
               },
             });
 
-            // 劫持的异步script(例如vue-router的按需加载)
+            // 缓存动态加载的script (例vue-router的按需加载)
             const dynamicScriptCommentElement = document.createComment(`dynamic script ${src} replaced by qiankun`);
             dynamicScriptAttachedCommentMap.set(element, dynamicScriptCommentElement);
             return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicScriptCommentElement, referenceNode);
