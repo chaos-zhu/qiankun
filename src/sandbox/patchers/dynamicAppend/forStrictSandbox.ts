@@ -30,12 +30,17 @@ nativeGlobal.__proxyAttachContainerConfigMap__ =
   nativeGlobal.__proxyAttachContainerConfigMap__ || new WeakMap<WindowProxy, ContainerConfig>();
 const proxyAttachContainerConfigMap = nativeGlobal.__proxyAttachContainerConfigMap__;
 
+// 存放子应用调用createElement插入的style、link、script DOM【动态插入】
 const elementAttachContainerConfigMap = new WeakMap<HTMLElement, ContainerConfig>();
 
 const docCreatePatchedMap = new WeakMap<typeof document.createElement, typeof document.createElement>();
+
+// 劫持document.createElement
 function patchDocumentCreateElement() {
+  // 初始化获取原生的createElement方法
   const docCreateElementFnBeforeOverwrite = docCreatePatchedMap.get(document.createElement);
 
+  // 不存在则劫持
   if (!docCreateElementFnBeforeOverwrite) {
     // 劫持原生 document.createElement 方法
     const rawDocumentCreateElement = document.createElement;
@@ -46,7 +51,7 @@ function patchDocumentCreateElement() {
     ): HTMLElement {
       // 调用原生方法创建dom
       const element = rawDocumentCreateElement.call(this, tagName, options);
-      // 判断dom tag为sytle、link、script
+      // 判断dom tag是否为为sytle、link、script
       if (isHijackingTag(tagName)) {
         const { window: currentRunningSandboxProxy } = getCurrentRunningApp() || {};
         if (currentRunningSandboxProxy) {
@@ -107,15 +112,15 @@ export function patchStrictSandbox(
     proxyAttachContainerConfigMap.set(proxy, containerConfig);
   }
 
-  // 动态插入的style arrayList
+  // 子应用的style：Array
   const { dynamicStyleSheetElements } = containerConfig;
   // dynamicStyleSheetElements: (3) [style, style, style]
 
-  // 劫持原生DocumentCreateElement方法，(优化)缓存动态style、link标签，返回取消劫持方法
+  // 劫持原生 DocumentCreateElement 方法，(优化) 缓存动态插入的style、link标签，返回取消劫持方法
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
   // 劫持一系列其他原生方法
-  // 将所有动态创建的style、link、script标签内容缓存起来【优化】
+  // 利用所有动态缓存的style、link、script DOM【优化】
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,

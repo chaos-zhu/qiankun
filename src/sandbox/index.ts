@@ -39,7 +39,7 @@ export function createSandboxContainer(
   globalContext?: typeof window,
 ) {
   let sandbox: SandBox;
-  // js 沙箱
+  // 一、创建 js 沙箱
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
     // ProxySandbox：多实例沙箱
@@ -50,7 +50,8 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // 1. 劫持操作style、link等tag的api，缓存动态插入部分(优化)
+  // 二、动态插入优化
+  // 1. 劫持操作style、link、script标签的api，缓存动态插入部分
   // 2. 返回free函数，调用unpatch
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
   let mountingFreers: Freer[] = [];
@@ -60,6 +61,7 @@ export function createSandboxContainer(
   return {
     instance: sandbox,
 
+    // 三、返回钩子
     /**
      * 沙箱被 mount
      * 可能是从 bootstrap 状态进入的 mount

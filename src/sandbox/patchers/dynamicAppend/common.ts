@@ -141,6 +141,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
   isInvokedByMicroApp: (element: HTMLElement) => boolean;
   containerConfigGetter: (element: HTMLElement) => ContainerConfig;
 }) {
+  // 覆盖原生appendChild的方法
   return function appendChildOrInsertBefore<T extends Node>(
     this: HTMLHeadElement | HTMLBodyElement,
     newChild: T,
@@ -165,6 +166,8 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         scopedCSS,
         excludeAssetFilter,
       } = containerConfig;
+      console.log(containerConfig);
+      debugger;
 
       switch (element.tagName) {
         case LINK_TAG_NAME:
@@ -323,11 +326,11 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     HTMLBodyElement.prototype.appendChild === rawBodyAppendChild &&
     HTMLHeadElement.prototype.insertBefore === rawHeadInsertBefore
   ) {
-    // 劫持 appendChild(决定 link、style、script 元素的插入位置是在主应用还是微应用)
+    // 劫持head标签的appendChild(决定 link、style、script 元素的插入位置是在主应用还是微应用)
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
-      rawDOMAppendOrInsertBefore: rawHeadAppendChild,
-      containerConfigGetter,
-      isInvokedByMicroApp,
+      rawDOMAppendOrInsertBefore: rawHeadAppendChild, // 原生插入方法
+      containerConfigGetter, // 插入的style/script/link标签
+      isInvokedByMicroApp, // 是否是子应用的插入，通过上面的 weakMap 判断
     }) as typeof rawHeadAppendChild;
     HTMLBodyElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawBodyAppendChild,
@@ -369,6 +372,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
   };
 }
 
+// 二次激活重新从缓存中获取css
 export function rebuildCSSRules(
   styleSheetElements: HTMLStyleElement[],
   reAppendElement: (stylesheetElement: HTMLStyleElement) => boolean,

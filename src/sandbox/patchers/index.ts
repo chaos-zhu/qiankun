@@ -46,6 +46,7 @@ export function patchAtMounting(
 }
 
 // 初始化阶段给 createElement、appendChild、insertBefore 三个方法打一个 patch
+// 每个子应用只初始化一次
 export function patchAtBootstrapping(
   appName: string,
   elementGetter: () => HTMLElement | ShadowRoot,
