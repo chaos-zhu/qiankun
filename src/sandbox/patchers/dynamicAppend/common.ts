@@ -167,7 +167,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         excludeAssetFilter,
       } = containerConfig;
       console.log(containerConfig);
-      debugger;
+      // debugger;
 
       switch (element.tagName) {
         case LINK_TAG_NAME:

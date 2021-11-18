@@ -42,6 +42,7 @@ const autoDowngradeForLowVersionBrowser = (configuration: FrameworkConfiguration
   return configuration;
 };
 
+// 注册与加载子应用
 export function registerMicroApps<T extends ObjectType>(
   apps: Array<RegistrableApp<T>>,
   lifeCycles?: FrameworkLifeCycles<T>,
@@ -60,10 +61,10 @@ export function registerMicroApps<T extends ObjectType>(
       app: async () => {
         loader(true);
         // 等待调用start才开始加载子应用
-        await frameworkStartedDefer.promise;
+        // await frameworkStartedDefer.promise;
 
-        // {prefetch: true, singular: true, sandbox: true}
         // console.log('frameworkConfiguration:', frameworkConfiguration);
+        // { prefetch: true, singular: true, sandbox: true }
 
         const { mount, ...otherMicroAppConfigs } = (
           // console.log(appConfig); // {entry: '//localhost:7100', container: '#subapp-viewport'}
@@ -93,6 +94,7 @@ export function registerMicroApps<T extends ObjectType>(
 const appConfigPromiseGetterMap = new Map<string, Promise<ParcelConfigObjectGetter>>();
 const containerMicroAppsMap = new Map<string, MicroApp[]>();
 
+// 手动加载子应用
 export function loadMicroApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration?: FrameworkConfiguration,
@@ -228,9 +230,9 @@ export function start(opts: FrameworkConfiguration = {}) {
   // 沙箱运行环境判断
   frameworkConfiguration = autoDowngradeForLowVersionBrowser(frameworkConfiguration);
 
-  // 开始加载子应用
-  startSingleSpa({ urlRerouteOnly }); // 当url发生实质性变化时才重载路应用(https://blog.csdn.net/qq_41694291/article/details/113842872)
+  // 根据路由开始匹配加载子应用
+  startSingleSpa({ urlRerouteOnly }); // 当url发生实质性变化时才重载应用(https://blog.csdn.net/qq_41694291/article/details/113842872)
   started = true;
 
-  frameworkStartedDefer.resolve(); // 调用后才开始注册子应用
+  frameworkStartedDefer.resolve(); // single-spa注册子应用，resolve后才开始加载子应用
 }
