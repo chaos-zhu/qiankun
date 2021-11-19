@@ -45,7 +45,7 @@ export default class SnapshotSandbox implements SandBox {
       this.windowSnapshot[prop] = window[prop];
     });
 
-    // 激活沙箱 判断之前是否变更过window属性，
+    // 激活沙箱 判断之前是否变更过window属性
     Object.keys(this.modifyPropsMap).forEach((p: any) => {
       window[p] = this.modifyPropsMap[p];
     });

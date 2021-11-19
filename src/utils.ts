@@ -167,7 +167,7 @@ export function isEnableScopedCSS(sandbox: FrameworkConfiguration['sandbox']) {
     return false;
   }
 
-  // 开启stric css隔离，scopedCss隔离被禁用
+  // 开启stricCss隔离，scopedCss隔离被禁用
   if (sandbox.strictStyleIsolation) {
     return false;
   }

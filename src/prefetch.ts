@@ -17,6 +17,7 @@ declare global {
 }
 
 // RIC and shim for browsers setTimeout() without it
+// 某帧渲染低于1000ms/60(即低于16ms)时 执行
 const requestIdleCallback =
   (window as any).requestIdleCallback ||
   function requestIdleCallback(cb: CallableFunction) {
@@ -50,6 +51,7 @@ function prefetch(entry: Entry, opts?: ImportEntryOpts): void {
     return;
   }
 
+  // 空闲时间加载 子应用&子应用资源(script/sytle)
   requestIdleCallback(async () => {
     const { getExternalScripts, getExternalStyleSheets } = await importEntry(entry, opts);
     requestIdleCallback(getExternalStyleSheets);
@@ -58,6 +60,7 @@ function prefetch(entry: Entry, opts?: ImportEntryOpts): void {
 }
 
 function prefetchAfterFirstMounted(apps: AppMetadata[], opts?: ImportEntryOpts): void {
+  // 监听第一个子应用加载完成后开始加载其他子应用
   window.addEventListener('single-spa:first-mount', function listener() {
     const notLoadedApps = apps.filter((app) => getAppStatus(app.name) === NOT_LOADED);
 

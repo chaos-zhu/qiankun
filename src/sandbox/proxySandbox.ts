@@ -187,7 +187,7 @@ export default class ProxySandbox implements SandBox {
 
     // 默认原生window对象
     const rawWindow = globalContext;
-    // fakeWindow对象 propertiesWithGetter判断属性是否可以get
+    // fakeWindow对象 propertiesWithGetter 判断属性是否可以get
     const { fakeWindow, propertiesWithGetter } = createFakeWindow(rawWindow);
     // console.log(fakeWindow);
 
@@ -195,10 +195,12 @@ export default class ProxySandbox implements SandBox {
     const hasOwnProperty = (key: PropertyKey) => fakeWindow.hasOwnProperty(key) || rawWindow.hasOwnProperty(key);
 
     const proxy = new Proxy(fakeWindow, {
+      /* 给fakeWindow(proxy) 设置value */
       set: (target: FakeWindow, p: PropertyKey, value: any): boolean => {
         if (this.sandboxRunning) {
-          // 记录正在运行的沙箱
+          // 确保正在运行的沙箱是对应子应用下的杀向
           this.registerRunningApp(name, proxy);
+
           // 不存在于fakeWindow而存在rawWindow上的属性
           if (!target.hasOwnProperty(p) && rawWindow.hasOwnProperty(p)) {
             const descriptor = Object.getOwnPropertyDescriptor(rawWindow, p);
@@ -274,7 +276,7 @@ export default class ProxySandbox implements SandBox {
           }
         }
 
-        // 获取value 判断fakeWindow是否存在属性，不存在则从rawWindow上取
+        // 获取value 判断 fakeWindow 是否存在属性，不存在则从rawWindow上取
         // eslint-disable-next-line no-nested-ternary
         const value = propertiesWithGetter.has(p)
           ? (rawWindow as any)[p]

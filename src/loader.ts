@@ -84,7 +84,7 @@ function createElement(
       if (appElement.attachShadow) {
         shadow = appElement.attachShadow({ mode: 'open' });
       } else {
-        // 废弃的创建shadow dom api
+        // 废弃的创建shadowDom api
         shadow = (appElement as any).createShadowRoot();
       }
       shadow.innerHTML = innerHTML;
@@ -151,8 +151,10 @@ type ElementRender = (
  * @param appContent
  * @param legacyRender
  */
+// 判断用户自定义渲染还是默认renden函数渲染
 function getRender(appName: string, appContent: string, legacyRender?: HTMLContentRender) {
   const render: ElementRender = ({ element, loading, container }, phase) => {
+    // 自定义渲染函数
     if (legacyRender) {
       if (process.env.NODE_ENV === 'development') {
         console.warn(
@@ -161,9 +163,7 @@ function getRender(appName: string, appContent: string, legacyRender?: HTMLConte
       }
       return legacyRender({ loading, appContent: element ? appContent : '' });
     }
-
     const containerElement = getContainer(container!);
-
     // 判断子应用容器是否存在
     if (phase !== 'unmounted') {
       const errorMsg = (() => {
@@ -237,7 +237,7 @@ let prevAppUnmountedDeferred: Deferred<void>;
 
 export type ParcelConfigObjectGetter = (remountContainer?: string | HTMLElement) => ParcelConfigObject;
 
-// 加载应用
+// 加载子应用
 export async function loadApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration: FrameworkConfiguration = {},
@@ -260,7 +260,7 @@ export async function loadApp<T extends ObjectType>(
   // console.log(importEntryOpts); // {prefetch: true}
   const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
   console.log('template: \n', template); // 外联的css加载后被内联
-  console.log('execScripts:  \n', execScripts); // 执行template中所有的js
+  console.log('execScripts:  \n', execScripts); // 执行template中所有的js(可指定上下文)
   console.log('assetPublicPath:  \n', assetPublicPath); // 公共路径
 
   // 单实例模式时 需等待上一个应用卸载(unmount时 resolve)
@@ -277,7 +277,7 @@ export async function loadApp<T extends ObjectType>(
   
   // 是否开启shadow dom css隔离
   const strictStyleIsolation = typeof sandbox === 'object' && !!sandbox.strictStyleIsolation; // 默认false
-  // 是否启用scope css隔离【注意：开启strictStyleIsolation优先级更高】
+  // 是否启用scope css隔离【注意：开启 strictStyleIsolation 优先级更高】
   const scopedCSS = isEnableScopedCSS(sandbox); // 默认false
 
   // 判断是否开启css隔离，则将 appContent 的子元素即微应用入口模版用 shadow dom 包裹起来
@@ -313,9 +313,10 @@ export async function loadApp<T extends ObjectType>(
   let global = globalContext; // 全局环境 window
   let mountSandbox = () => Promise.resolve();
   let unmountSandbox = () => Promise.resolve();
-  const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose; // loose 已废弃
+  // v2版本loose配置已废弃, useLooseSandbox为false
+  const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
-  // 注册沙箱 (包含js执行沙箱和css隔离沙箱)
+  // 创建沙箱 (包含js执行沙箱和css隔离沙箱)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,

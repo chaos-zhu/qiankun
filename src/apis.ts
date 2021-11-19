@@ -51,28 +51,28 @@ export function registerMicroApps<T extends ObjectType>(
   const unregisteredApps = apps.filter((app) => !microApps.some((registeredApp) => registeredApp.name === app.name));
   microApps = [...microApps, ...unregisteredApps];
 
-  // 注册子应用
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
-    // 设置子应用属性
+    // 调用single-spa 注册子应用(注册：在路由匹配后机会app回调)
     registerApplication({
       name,
+      activeWhen: activeRule,
+      customProps: props,
       // 激活 activeRule 时调用
       app: async () => {
         loader(true);
-        // 等待调用start才开始加载子应用
-        // await frameworkStartedDefer.promise;
+        // 确定等待调用start才开始加载子应用
+        await frameworkStartedDefer.promise;
 
         // console.log('frameworkConfiguration:', frameworkConfiguration);
         // { prefetch: true, singular: true, sandbox: true }
 
         const { mount, ...otherMicroAppConfigs } = (
           // console.log(appConfig); // {entry: '//localhost:7100', container: '#subapp-viewport'}
-          // * 完成了以下几件事：
-          // *  1、通过 HTML-Entry加载微应用，得到微应用的 html 模版（首屏内容）、JS 脚本执行器、静态经资源路径
+          // *  1、通过 HTML-Entry 加载微应用，得到微应用的 html 模版（首屏内容）、JS 脚本执行器、静态经资源路径
           // *  2、样式隔离，shadow DOM 或者 scoped css 两种方式
           // *  3、渲染微应用
-          // *  4、运行时沙箱，JS 沙箱、样式沙箱
+          // *  4、运行时沙箱：JS沙箱、CSS沙箱
           // *  5、合并沙箱传递出来的 生命周期方法、用户传递的生命周期方法、框架内置的生命周期方法，将这些生命周期方法统一整理，导出一个生命周期对象，
           //       供 single-spa 的 registerApplication 方法使用，这个对象就相当于使用 single-spa 时你的微应用导出的那些生命周期方法，只不过 qiankun
           //       额外填了一些生命周期方法，做了一些事情
@@ -85,8 +85,6 @@ export function registerMicroApps<T extends ObjectType>(
           ...otherMicroAppConfigs,
         };
       },
-      activeWhen: activeRule,
-      customProps: props,
     });
   });
 }
@@ -234,5 +232,5 @@ export function start(opts: FrameworkConfiguration = {}) {
   startSingleSpa({ urlRerouteOnly }); // 当url发生实质性变化时才重载应用(https://blog.csdn.net/qq_41694291/article/details/113842872)
   started = true;
 
-  frameworkStartedDefer.resolve(); // single-spa注册子应用，resolve后才开始加载子应用
+  frameworkStartedDefer.resolve(); // single-spa注册子应用，resolve后才开始加载子应用(防止start)
 }

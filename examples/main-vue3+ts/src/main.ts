@@ -58,6 +58,12 @@ registerMicroApps(
   },
 )
 
+// function test(params: any) {
+//   console.log(params.timeRemaining())
+// }
+
+// (requestIdleCallback as any)(test)
+
 // const { onGlobalStateChange, setGlobalState } = initGlobalState({
 //   user: 'qiankun',
 // })

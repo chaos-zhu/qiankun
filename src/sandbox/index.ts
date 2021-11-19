@@ -17,11 +17,11 @@ export { getCurrentRunningApp } from './common';
  * 沙箱分两个类型：
  * 1. app 环境沙箱
  *  app 环境沙箱是指应用初始化过之后，应用会在什么样的上下文环境运行。每个应用的环境沙箱只会初始化一次，因为子应用只会触发一次 bootstrap 。
- *  子应用在切换时，实际上切换的是 app 环境沙箱。
+ *  子应用在切换时，实际上切换的是 app 环境沙箱
  * 2. render 沙箱
- *  子应用在 app mount 开始前生成好的的沙箱。每次子应用切换过后，render 沙箱都会重现初始化。
+ *  子应用在 app mount 开始前生成好的的沙箱。每次子应用切换过后，render 沙箱都会重现初始化
  *
- * 这么设计的目的是为了保证每个子应用切换回来之后，还能运行在应用 bootstrap 之后的环境下。
+ * 这么设计的目的是为了保证每个子应用切换回来之后，还能运行在应用 bootstrap 之后的环境下
  *
  * @param appName
  * @param elementGetter
@@ -38,7 +38,7 @@ export function createSandboxContainer(
   excludeAssetFilter?: (url: string) => boolean, // 不被qiankun劫持的特殊css/js
   globalContext?: typeof window,
 ) {
-  let sandbox: SandBox;
+  let sandbox: SandBox; // 子应用运行环境顶层对象
   // 一、创建 js 沙箱
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
