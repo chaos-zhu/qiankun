@@ -85,7 +85,11 @@ setDefaultMountApp('/react16')
 /**
  * Step4 启动应用
  */
-start()
+start({
+  sandbox: {
+    // experimentalStyleIsolation: true
+  }
+})
 
 runAfterFirstMounted(() => {
   console.log('[MainApp] first app mounted')

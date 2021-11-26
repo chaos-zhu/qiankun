@@ -141,21 +141,22 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
   isInvokedByMicroApp: (element: HTMLElement) => boolean;
   containerConfigGetter: (element: HTMLElement) => ContainerConfig;
 }) {
-  // 覆盖原生appendChild的方法
+  // 覆盖原生 appendChild 的方法
   return function appendChildOrInsertBefore<T extends Node>(
     this: HTMLHeadElement | HTMLBodyElement,
     newChild: T,
     refChild?: Node | null,
   ) {
-    // 动态加载的元素
+    // createElement动态创建的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
-    // 非style、link、script直接插入
+    // 非style、link、script直接插入【不做缓存】
     if (!isHijackingTag(element.tagName) || !isInvokedByMicroApp(element)) {
       return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
     }
 
     if (element.tagName) {
+      // 取出劫持createElment创建的element
       const containerConfig = containerConfigGetter(element);
       const {
         appName,
@@ -166,41 +167,50 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         scopedCSS,
         excludeAssetFilter,
       } = containerConfig;
-      console.log(containerConfig);
+      // console.log(containerConfig);
       // debugger;
 
       switch (element.tagName) {
         case LINK_TAG_NAME:
-        // 动态加入的style标签劫持
         case STYLE_TAG_NAME: {
+          // 动态加入的style标签
           let stylesheetElement: HTMLLinkElement | HTMLStyleElement = newChild as any;
           const { href } = stylesheetElement as HTMLLinkElement;
+
+          // 特殊资源直接加载
           if (excludeAssetFilter && href && excludeAssetFilter(href)) {
             return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
           }
 
+          // 子应用包裹dom
           const mountDOM = appWrapperGetter();
 
           // 设置scoped css隔离
           if (scopedCSS) {
             // exclude link elements like <link rel="icon" href="favicon.ico">
+            // 判断是否使用link标签动态插入的style
             const linkElementUsingStylesheet =
               element.tagName?.toUpperCase() === LINK_TAG_NAME &&
               (element as HTMLLinkElement).rel === 'stylesheet' &&
               (element as HTMLLinkElement).href;
+
             if (linkElementUsingStylesheet) {
               // 判断是否使用用户自定义的fetch加载sytle/script等资源
               const fetch =
                 typeof frameworkConfiguration.fetch === 'function'
                   ? frameworkConfiguration.fetch
                   : frameworkConfiguration.fetch?.fn;
+              // 请求style href资源并创建style，使用scoped包裹插入到Dom
               stylesheetElement = convertLinkAsStyle(
                 element,
+                // 插入
                 (styleElement) => css.process(mountDOM, styleElement, appName),
                 fetch,
               );
+              // 缓存sytle
               dynamicLinkAttachedInlineStyleMap.set(element, stylesheetElement);
             } else {
+              // 不缓存，直接挂载
               css.process(mountDOM, stylesheetElement, appName);
             }
           }
@@ -282,6 +292,7 @@ function getNewRemoveChild(
   // 移除dom(判断是从主应用中移除还是从子应用移除)
   return function removeChild<T extends Node>(this: HTMLHeadElement | HTMLBodyElement, child: T) {
     const { tagName } = child as any;
+    // 非style、link、script直接移除dom
     if (!isHijackingTag(tagName)) return headOrBodyRemoveChild.call(this, child) as T;
 
     try {
@@ -291,21 +302,19 @@ function getNewRemoveChild(
           attachedElement = (dynamicLinkAttachedInlineStyleMap.get(child as any) as Node) || child;
           break;
         }
-
         case SCRIPT_TAG_NAME: {
           attachedElement = (dynamicScriptAttachedCommentMap.get(child as any) as Node) || child;
           break;
         }
-
         default: {
           attachedElement = child;
         }
       }
 
-      // container may had been removed while app unmounting if the removeChild action was async
       const appWrapperGetter = appWrapperGetterGetter(child as any);
       const container = appWrapperGetter();
       if (container.contains(attachedElement)) {
+        // 从页面移除dom
         return rawRemoveChild.call(container, attachedElement) as T;
       }
     } catch (e) {
@@ -320,18 +329,20 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
   isInvokedByMicroApp: (element: HTMLElement) => boolean,
   containerConfigGetter: (element: HTMLElement) => ContainerConfig,
 ) {
-  // 判断是否重写过appendChild/insertBefore
+  // 判断是否劫持过 appendChild/insertBefore
   if (
     HTMLHeadElement.prototype.appendChild === rawHeadAppendChild &&
     HTMLBodyElement.prototype.appendChild === rawBodyAppendChild &&
     HTMLHeadElement.prototype.insertBefore === rawHeadInsertBefore
   ) {
-    // 劫持head标签的appendChild(决定 link、style、script 元素的插入位置是在主应用还是微应用)
+    // appendChild 插入到head的劫持
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadAppendChild, // 原生插入方法
       containerConfigGetter, // 插入的style/script/link标签
       isInvokedByMicroApp, // 是否是子应用的插入，通过上面的 weakMap 判断
     }) as typeof rawHeadAppendChild;
+
+    // appendChild 插入到body的劫持
     HTMLBodyElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawBodyAppendChild,
       containerConfigGetter,

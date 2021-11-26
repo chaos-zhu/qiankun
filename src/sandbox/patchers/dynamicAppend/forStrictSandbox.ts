@@ -40,7 +40,7 @@ function patchDocumentCreateElement() {
   // 初始化获取原生的createElement方法
   const docCreateElementFnBeforeOverwrite = docCreatePatchedMap.get(document.createElement);
 
-  // 不存在则劫持
+  // 判断是否劫持过
   if (!docCreateElementFnBeforeOverwrite) {
     // 劫持原生 document.createElement 方法
     const rawDocumentCreateElement = document.createElement;
@@ -57,9 +57,9 @@ function patchDocumentCreateElement() {
         if (currentRunningSandboxProxy) {
           // 从全局状态中取出当前沙箱配置
           const proxyContainerConfig = proxyAttachContainerConfigMap.get(currentRunningSandboxProxy);
-          console.log(proxyContainerConfig);
+          // console.log(proxyContainerConfig);
           if (proxyContainerConfig) {
-            // 设置到弱引用Map中
+            // 将tag保存到Map中【在哪用？】
             elementAttachContainerConfigMap.set(element, proxyContainerConfig);
           }
         }
@@ -99,6 +99,7 @@ export function patchStrictSandbox(
   // console.log('containerConfig: \n', containerConfig);
   // debugger;
 
+  // 首次patch初始化 子应用config
   if (!containerConfig) {
     containerConfig = {
       appName,
@@ -112,15 +113,15 @@ export function patchStrictSandbox(
     proxyAttachContainerConfigMap.set(proxy, containerConfig);
   }
 
-  // 子应用的style：Array
+  // 子应用的style引用对象，储存了所有动态插入的style
   const { dynamicStyleSheetElements } = containerConfig;
   // dynamicStyleSheetElements: (3) [style, style, style]
 
-  // 劫持原生 DocumentCreateElement 方法，(优化) 缓存动态插入的style、link标签，返回取消劫持方法
+  // 劫持动态创建的script、style、link，并缓存到map，返回取消劫持方法(优化) 
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
-  // 劫持一系列其他原生方法
-  // 利用所有动态缓存的style、link、script DOM【优化】
+  // 劫持创建(script、style、link)后动态插入, 目的是为了--
+  // // 缓存所有的的 style、link、script DOM【优化】
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,

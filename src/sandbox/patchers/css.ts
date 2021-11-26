@@ -41,7 +41,7 @@ export class ScopedCSS {
   }
 
   process(styleNode: HTMLStyleElement, prefix: string = '') {
-    // 动态的给每个样式tag 加 div[data-qian-appName] 前缀
+    // 给子应用根节点 tag 加 div[data-qian-appName] 前缀 ？？？
     if (styleNode.textContent !== '') {
       const textNode = document.createTextNode(styleNode.textContent || '');
       this.swapNode.appendChild(textNode);

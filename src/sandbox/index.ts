@@ -38,7 +38,8 @@ export function createSandboxContainer(
   excludeAssetFilter?: (url: string) => boolean, // 不被qiankun劫持的特殊css/js
   globalContext?: typeof window,
 ) {
-  let sandbox: SandBox; // 子应用运行环境顶层对象
+  // 子应用运行环境顶层对象
+  let sandbox: SandBox;
   // 一、创建 js 沙箱
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
