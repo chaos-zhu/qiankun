@@ -150,7 +150,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     // createElement动态创建的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
-    // 非style、link、script直接插入【不做缓存】
+    // 非style、link、script直接调用原生方法插入【不做缓存】
     if (!isHijackingTag(element.tagName) || !isInvokedByMicroApp(element)) {
       return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
     }
@@ -338,7 +338,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     // appendChild 插入到head的劫持
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadAppendChild, // 原生插入方法
-      containerConfigGetter, // 插入的style/script/link标签
+      containerConfigGetter, // 通过创建的element 获取即将插入的style/script/link标签
       isInvokedByMicroApp, // 是否是子应用的插入，通过上面的 weakMap 判断
     }) as typeof rawHeadAppendChild;
 
