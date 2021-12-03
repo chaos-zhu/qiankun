@@ -59,7 +59,7 @@ function patchDocumentCreateElement() {
           const proxyContainerConfig = proxyAttachContainerConfigMap.get(currentRunningSandboxProxy);
           // console.log(proxyContainerConfig);
           if (proxyContainerConfig) {
-            // 将tag保存到Map中【在哪用？】
+            // 将tag保存到Map中【劫持插入API时使用】
             elementAttachContainerConfigMap.set(element, proxyContainerConfig);
           }
         }
@@ -136,11 +136,12 @@ export function patchStrictSandbox(
     if (mounting) mountingPatchCount--;
 
     const allMicroAppUnmounted = mountingPatchCount === 0 && bootstrappingPatchCount === 0;
-    // 清除原生方法劫持、缓存动态添加的样式、返回 rebuild 函数
+    // 所有子应用未挂在状态： 清除原生方法劫持、缓存动态添加的样式、返回 rebuild 函数
     if (allMicroAppUnmounted) {
       unpatchDynamicAppendPrototypeFunctions();
       unpatchDocumentCreate();
     }
+    // 样式表不清除，缓存记录一份
     recordStyledComponentsCSSRules(dynamicStyleSheetElements);
 
     // 子应用重新构建时从缓存中加载css

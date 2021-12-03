@@ -52,12 +52,12 @@ export function createSandboxContainer(
   }
 
   // 二、动态插入优化
-  // 1. 劫持操作style、link、script标签的api，缓存动态插入部分
+  // 1. 劫持操作style、link、script标签的api，缓存动态插入的style(scope css处理)、script标签
   // 2. 返回free函数，调用unpatch
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
-  let mountingFreers: Freer[] = [];
+  let mountingFreers: Freer[] = []; // 存储已挂载应用的free函数(取消劫持)
 
-  let sideEffectsRebuilders: Rebuilder[] = [];
+  let sideEffectsRebuilders: Rebuilder[] = []; // 存储已free的应用状态(等待重新构建)
 
   return {
     instance: sandbox,

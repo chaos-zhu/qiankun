@@ -85,16 +85,21 @@ function convertLinkAsStyle(
   postProcess: (styleElement: HTMLStyleElement) => void,
   fetchFn = fetch,
 ): HTMLStyleElement {
+  // 创建style tag
   const styleElement = document.createElement('style');
   const { href } = element;
   // add source link element href
   styleElement.dataset.qiankunHref = href;
 
+  // 请求style href
   fetchFn(href)
     .then((res: any) => res.text())
     .then((styleContext: string) => {
+      // 将style text插入创建的style标签
       styleElement.appendChild(document.createTextNode(styleContext));
+      // 执行scope css
       postProcess(styleElement);
+      // 生成一些事件订阅(用处？)
       manualInvokeElementOnLoad(element);
     })
     .catch(() => manualInvokeElementOnError(element));
@@ -147,7 +152,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     newChild: T,
     refChild?: Node | null,
   ) {
-    // createElement动态创建的元素
+    // createElement 动态创建的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
     // 非style、link、script直接调用原生方法插入【不做缓存】
@@ -156,7 +161,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     }
 
     if (element.tagName) {
-      // 取出劫持createElment创建的element
+      // 根据element作为key从Map中取出containerConfig【对应forStrictSandBox row:63】
       const containerConfig = containerConfigGetter(element);
       const {
         appName,
@@ -166,7 +171,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         dynamicStyleSheetElements, // 当前实例动态插入的css list
         scopedCSS,
         excludeAssetFilter,
-      } = containerConfig;
+      } = containerConfig; // 【对应forStrictSandBox row:103】
       // console.log(containerConfig);
       // debugger;
 
@@ -177,12 +182,12 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           let stylesheetElement: HTMLLinkElement | HTMLStyleElement = newChild as any;
           const { href } = stylesheetElement as HTMLLinkElement;
 
-          // 特殊资源直接加载
+          // 特殊资源直接加载(调用start/loadMicroApp时配置)
           if (excludeAssetFilter && href && excludeAssetFilter(href)) {
             return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
           }
 
-          // 子应用包裹dom
+          // 子应用包裹dom【从loader.ts一路传过来的。。。】
           const mountDOM = appWrapperGetter();
 
           // 设置scoped css隔离
@@ -199,45 +204,49 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
               const fetch =
                 typeof frameworkConfiguration.fetch === 'function'
                   ? frameworkConfiguration.fetch
-                  : frameworkConfiguration.fetch?.fn;
+                  : frameworkConfiguration.fetch?.fn; // import-html-entry 中提供的原生fetch
               // 请求style href资源并创建style，使用scoped包裹插入到Dom
               stylesheetElement = convertLinkAsStyle(
                 element,
-                // 插入
+                // 给css加上作用域，及scope css
                 (styleElement) => css.process(mountDOM, styleElement, appName),
                 fetch,
               );
-              // 缓存sytle
+              // 动态缓存sytle
               dynamicLinkAttachedInlineStyleMap.set(element, stylesheetElement);
             } else {
-              // 不缓存，直接挂载
+              // 不缓存，直接挂载(加上scope)
               css.process(mountDOM, stylesheetElement, appName);
             }
           }
 
           // eslint-disable-next-line no-shadow
           dynamicStyleSheetElements.push(stylesheetElement); // push到css list中, 下次加载时直接从这里取出来！
-          const referenceNode = mountDOM.contains(refChild) ? refChild : null;
+
+          // 插入到dom中
+          const referenceNode = mountDOM.contains(refChild) ? refChild : null; // 判断是否后代节点
           return rawDOMAppendOrInsertBefore.call(mountDOM, stylesheetElement, referenceNode);
         }
 
         // 缓存逻辑同style加载
         case SCRIPT_TAG_NAME: {
           const { src, text } = element as HTMLScriptElement;
+          // 过滤
           if (excludeAssetFilter && src && excludeAssetFilter(src)) {
             return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
           }
 
           const mountDOM = appWrapperGetter();
           const { fetch } = frameworkConfiguration;
-          const referenceNode = mountDOM.contains(refChild) ? refChild : null;
+          const referenceNode = mountDOM.contains(refChild) ? refChild : null; // 是否后代节点
 
           if (src) {
-            // 执行动态加载的script 全局环境为proxy
+            // 加载 script src, 执行环境为 proxy
             execScripts(null, [src], proxy, {
               fetch,
               strictGlobal,
               beforeExec: () => {
+                // 执行前的一些操作。。。
                 const isCurrentScriptConfigurable = () => {
                   const descriptor = Object.getOwnPropertyDescriptor(document, 'currentScript');
                   return !descriptor || descriptor.configurable;
@@ -263,16 +272,21 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
               },
             });
 
-            // 缓存动态加载的script (例vue-router的按需加载)
+            // 添加提示到html
             const dynamicScriptCommentElement = document.createComment(`dynamic script ${src} replaced by qiankun`);
+            // 缓存动态加载的script (例 vue-router 的按需加载的js组件模块)
             dynamicScriptAttachedCommentMap.set(element, dynamicScriptCommentElement);
+            // 插入到dom
             return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicScriptCommentElement, referenceNode);
           }
 
-          // inline script never trigger the onload and onerror event
+          // 执行除src外的内联script js代码
           execScripts(null, [`<script>${text}</script>`], proxy, { strictGlobal });
+          // 添加提示到html
           const dynamicInlineScriptCommentElement = document.createComment('dynamic inline script replaced by qiankun');
+          // 缓存动态加载的script (例 vue-router 的按需加载的js组件模块)
           dynamicScriptAttachedCommentMap.set(element, dynamicInlineScriptCommentElement);
+          // 插入到dom
           return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicInlineScriptCommentElement, referenceNode);
         }
 
@@ -281,6 +295,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
       }
     }
 
+    // 规避特殊情况
     return rawDOMAppendOrInsertBefore.call(this, element, refChild);
   };
 }
@@ -292,9 +307,10 @@ function getNewRemoveChild(
   // 移除dom(判断是从主应用中移除还是从子应用移除)
   return function removeChild<T extends Node>(this: HTMLHeadElement | HTMLBodyElement, child: T) {
     const { tagName } = child as any;
-    // 非style、link、script直接移除dom
+    // 非 style、link、script 直接移除dom
     if (!isHijackingTag(tagName)) return headOrBodyRemoveChild.call(this, child) as T;
 
+    // 尝试从动态缓存的Map中取出 Dom
     try {
       let attachedElement: Node;
       switch (tagName) {
@@ -313,6 +329,7 @@ function getNewRemoveChild(
 
       const appWrapperGetter = appWrapperGetterGetter(child as any);
       const container = appWrapperGetter();
+      // 是否后代节点
       if (container.contains(attachedElement)) {
         // 从页面移除dom
         return rawRemoveChild.call(container, attachedElement) as T;
@@ -357,7 +374,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     }) as typeof rawHeadInsertBefore;
   }
 
-  // Just overwrite it while it have not been overwrite
+  // 判断是否劫持过 removeChild
   if (
     HTMLHeadElement.prototype.removeChild === rawHeadRemoveChild &&
     HTMLBodyElement.prototype.removeChild === rawBodyRemoveChild

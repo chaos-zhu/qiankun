@@ -43,10 +43,15 @@ export class ScopedCSS {
   process(styleNode: HTMLStyleElement, prefix: string = '') {
     // 给子应用根节点 tag 加 div[data-qian-appName] 前缀 ？？？
     if (styleNode.textContent !== '') {
+      // 创建个临时的textNode节点，存储 sytle 中的css文本
       const textNode = document.createTextNode(styleNode.textContent || '');
+      // 插入process实例的style tag
       this.swapNode.appendChild(textNode);
+      // style标签的 sheet 对象
       const sheet = this.swapNode.sheet as any; // type is missing
+      // 浅拷贝一份
       const rules = arrayify<CSSRule>(sheet?.cssRules ?? []);
+      // 【关键】重写css 选择器(加个选择器前缀，达到 scope css 效果)
       const css = this.rewrite(rules, prefix);
       // eslint-disable-next-line no-param-reassign
       styleNode.textContent = css;
@@ -188,7 +193,7 @@ export const process = (
 ): void => {
   // lazy singleton pattern
   if (!processor) {
-    processor = new ScopedCSS();
+    processor = new ScopedCSS(); // 创建一个空style tag 对象并插入到 dom
   }
 
   // link 经过entry-html处理一般不会存在
@@ -203,7 +208,7 @@ export const process = (
 
   const tag = (mountDOM.tagName || '').toLowerCase();
 
-  // 动态样式表 给每个选择器加特定前缀 实现多实例样式隔离
+  // 给每个选择器加特定前缀 实现多实例样式隔离
   if (tag && stylesheetElement.tagName === 'STYLE') {
     const prefix = `${tag}[${QiankunCSSRewriteAttr}="${appName}"]`;
     processor.process(stylesheetElement, prefix);

@@ -87,7 +87,8 @@ setDefaultMountApp('/react16')
  */
 start({
   sandbox: {
-    // experimentalStyleIsolation: true
+    // strictStyleIsolation: true, // shadow dom
+    experimentalStyleIsolation: true // scope css
   }
 })
 
