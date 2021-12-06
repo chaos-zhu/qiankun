@@ -31,6 +31,7 @@ export function patchAtMounting(
       ...basePatchers,
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, true, scopedCSS, excludeAssetFilter),
     ],
+    // proxy环境
     [SandBoxType.Proxy]: [
       ...basePatchers,
       () => patchStrictSandbox(appName, elementGetter, sandbox.proxy, true, scopedCSS, excludeAssetFilter),

@@ -135,6 +135,7 @@ export function patchStrictSandbox(
     if (!mounting && bootstrappingPatchCount !== 0) bootstrappingPatchCount--;
     if (mounting) mountingPatchCount--;
 
+    // 确保没有子应用处于准备挂载或者挂载阶段，防止意外情况
     const allMicroAppUnmounted = mountingPatchCount === 0 && bootstrappingPatchCount === 0;
     // 所有子应用未挂在状态： 清除原生方法劫持、缓存动态添加的样式、返回 rebuild 函数
     if (allMicroAppUnmounted) {
@@ -144,8 +145,9 @@ export function patchStrictSandbox(
     // 样式表不清除，缓存记录一份
     recordStyledComponentsCSSRules(dynamicStyleSheetElements);
 
-    // 子应用重新构建时从缓存中加载css
+    // free函数返回rebuild函数，用于从缓存中快速构建css
     return function rebuild() {
+      // 子应用重新构建时从缓存中加载css
       rebuildCSSRules(dynamicStyleSheetElements, (stylesheetElement) => {
         const appWrapper = appWrapperGetter();
         if (!appWrapper.contains(stylesheetElement)) {

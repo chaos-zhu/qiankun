@@ -51,13 +51,13 @@ export function createSandboxContainer(
     sandbox = new SnapshotSandbox(appName);
   }
 
-  // 二、动态插入优化
-  // 1. 劫持操作style、link、script标签的api，缓存动态插入的style(scope css处理)、script标签
-  // 2. 返回free函数，调用unpatch
+  // 二、动态插入缓存优化
+  // 1. 劫持操作style、link、script dom的api，缓存动态插入的style(scope css处理)、script
+  // 2. 返回free函数(Array)，调用unpatch取消劫持
   const bootstrappingFreers = patchAtBootstrapping(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
-  let mountingFreers: Freer[] = []; // 存储已挂载应用的free函数(取消劫持)
 
-  let sideEffectsRebuilders: Rebuilder[] = []; // 存储已free的应用状态(等待重新构建)
+  let mountingFreers: Freer[] = []; // ？
+  let sideEffectsRebuilders: Rebuilder[] = []; // 用于激活时从缓存中重新构建css
 
   return {
     instance: sandbox,
@@ -72,19 +72,20 @@ export function createSandboxContainer(
       sandbox.active(); // 激活沙箱
       const sideEffectsRebuildersAtBootstrapping = sideEffectsRebuilders.slice(0, bootstrappingFreers.length);
       const sideEffectsRebuildersAtMounting = sideEffectsRebuilders.slice(bootstrappingFreers.length);
-      // 子应用切换重新rebuild 缓存的 css 
+      // 【初次挂载为空】子应用切换重新rebuild 缓存的 css 
       if (sideEffectsRebuildersAtBootstrapping.length) {
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }
 
-      // 全局变量补丁, 防止内存泄露
+      // 全局变量补丁(setInterval\EventListen), 防止内存泄露
       mountingFreers = patchAtMounting(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
 
+      // 如果是重载则从缓存中构建css
       if (sideEffectsRebuildersAtMounting.length) {
         sideEffectsRebuildersAtMounting.forEach((rebuild) => rebuild());
       }
 
-      // 激活后清空缓存,
+      // 激活后清空缓存
       sideEffectsRebuilders = [];
     },
 
@@ -92,7 +93,7 @@ export function createSandboxContainer(
      * 恢复 global 状态，使其能回到应用加载之前的状态
      */
     async unmount() {
-      // 失活时重新添加缓存
+      // 卸载时添加缓存
       sideEffectsRebuilders = [...bootstrappingFreers, ...mountingFreers].map((free) => free());
 
       sandbox.inactive();

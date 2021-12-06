@@ -111,6 +111,7 @@ const styledComponentCSSRulesMap = new WeakMap<HTMLStyleElement, CSSRuleList>();
 const dynamicScriptAttachedCommentMap = new WeakMap<HTMLScriptElement, Comment>();
 const dynamicLinkAttachedInlineStyleMap = new WeakMap<HTMLLinkElement, HTMLStyleElement>();
 
+// 缓存css style
 export function recordStyledComponentsCSSRules(styleElements: HTMLStyleElement[]): void {
   styleElements.forEach((styleElement) => {
     /*
@@ -126,7 +127,7 @@ export function recordStyledComponentsCSSRules(styleElements: HTMLStyleElement[]
     }
   });
 }
-
+// 取出css style
 export function getStyledElementCSSRules(styledElement: HTMLStyleElement): CSSRuleList | undefined {
   return styledComponentCSSRulesMap.get(styledElement);
 }
