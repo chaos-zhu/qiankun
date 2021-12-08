@@ -3,7 +3,7 @@
   <div class="mainapp">
     <!-- 标题栏 -->
     <header class="mainapp-header">
-      <h1>QianKun</h1>
+      <h1>{{QianKun || ''}}</h1>
     </header>
     <div class="mainapp-main">
       <!-- 侧边栏 -->
@@ -12,7 +12,7 @@
         <li @click="push('/react15')">React15</li>
         <li @click="push('/vue')">Vue</li>
         <li @click="push('/vue3')">Vue3</li>
-        <li @click="push('/angular9')">Angular9</li>
+        <!-- <li @click="push('/angular9')">Angular9</li> -->
         <li @click="push('/purehtml')">Purehtml</li>
       </ul>
       <!-- 子应用  -->

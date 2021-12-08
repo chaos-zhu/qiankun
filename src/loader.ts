@@ -288,8 +288,8 @@ export async function loadApp<T extends ObjectType>(
     scopedCSS,
     appName,
   );
-  console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
-  debugger;
+  // console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
+  // debugger;
 
   const initialContainer = 'container' in app ? app.container : undefined;
 
@@ -298,10 +298,10 @@ export async function loadApp<T extends ObjectType>(
   const render = getRender(appName, appContent, legacyRender);
   // 渲染初始化的html模板，不包含执行js后生成的dom【在single-spa执行mount的时候会把最终的dom插入到页面】
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
-  console.log(initialAppWrapperElement);
-  debugger;
+  // console.log(initialAppWrapperElement);
+  // debugger;
 
-  // getAppWrapperGetter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
+  // getAppWrapperGetter：获取最初状态的子应用 root 元素（如果支持shadow dom return shadow dom root element）
   // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
   const initialAppWrapperGetter = getAppWrapperGetter(
     appName,
@@ -311,8 +311,8 @@ export async function loadApp<T extends ObjectType>(
     scopedCSS,
     () => initialAppWrapperElement,
   );
-  console.log(initialAppWrapperGetter);
-  debugger;
+  // console.log(initialAppWrapperGetter());
+  // debugger;
 
   // 开始处理 运行沙箱
   let global = globalContext; // 全局环境 window
@@ -389,7 +389,8 @@ export async function loadApp<T extends ObjectType>(
       bootstrap,
       // 子应用挂载时调用
       mount: [
-        // 单实例模式判断，新的子应用挂载行为会在旧的子应用卸载之后才开始
+        // 【状态机】单实例模式判断，等待其他子应用卸载完成才开始挂载新的子应用
+        // 【在调用unmount时，该状态机(promise)会被resolve】
         async () => {
           if ((await validateSingularMode(singular, app)) && prevAppUnmountedDeferred) {
             return prevAppUnmountedDeferred.promise;
@@ -415,10 +416,10 @@ export async function loadApp<T extends ObjectType>(
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appName);
             syncAppWrapperElement2Sandbox(appWrapperElement);
           }
-          // 渲染页面
+          // 渲染页面【重复渲染，loading参数实际貌似没啥用】
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
-          console.log(appWrapperElement);
-          debugger;
+          // console.log(appWrapperElement);
+          // debugger;
         },
         // 激活沙箱
         mountSandbox,
@@ -426,11 +427,11 @@ export async function loadApp<T extends ObjectType>(
         async () => execHooksChain(toArray(beforeMount), app, global),
         // 执行子应用暴露的mount钩子【子应用执行自己的render】
         async (props) => mount({ ...props, container: appWrapperGetter(), setGlobalState, onGlobalStateChange }),
-        // 子应用执行mount钩子后 渲染一次页面？
+        // 子应用执行mount钩子后 渲染一次页面【重复渲染，loading实际貌似没啥用】
         async () => render({ element: appWrapperElement, loading: false, container: remountContainer }, 'mounted'),
         // 执行内部 afterMount 钩子
         async () => execHooksChain(toArray(afterMount), app, global),
-        // ？initialize the unmount defer after app mounted and resolve the defer after it unmounted
+        // 单实例模式时，存储一个pending状态的promise
         async () => {
           if (await validateSingularMode(singular, app)) {
             prevAppUnmountedDeferred = new Deferred<void>();
@@ -439,16 +440,16 @@ export async function loadApp<T extends ObjectType>(
       ],
       // 子应用卸载时调用(在子应用激活阶段， single-spa会activeRule未命中时将会触发 unmount)
       unmount: [
-        // 执行内部 beforeUnmount 钩子
+        // 执行内部 beforeUnmount 钩子(移除QIANKUN全局变量&publicPath变量)
         async () => execHooksChain(toArray(beforeUnmount), app, global),
-        // 执行子应用 unmount 钩子
+        // 执行子应用 unmount 钩子(销毁子应用实例)
         async (props) => unmount({ ...props, container: appWrapperGetter() }),
-        // 失活沙箱
+        // 失活沙箱(缓存free返回得rebuild钩子，等待重建)
         unmountSandbox,
-        // 执行内部 afterUnmount 钩子
+        // 执行 afterUnmount 钩子【start时传入的钩子】
         async () => execHooksChain(toArray(afterUnmount), app, global),
         async () => {
-          // 卸载应用
+          // 卸载应用(element: null)
           render({ element: null, loading: false, container: remountContainer }, 'unmounted');
           // 关闭状态共享
           offGlobalStateChange(appInstanceId);
@@ -457,7 +458,7 @@ export async function loadApp<T extends ObjectType>(
           syncAppWrapperElement2Sandbox(appWrapperElement);
         },
         async () => {
-          // 没有子应用running，处于空闲状态
+          // 子应用卸载完毕，resolve promise. 下一个应用构建时promise不再时pending
           if ((await validateSingularMode(singular, app)) && prevAppUnmountedDeferred) {
             prevAppUnmountedDeferred.resolve();
           }
@@ -465,6 +466,7 @@ export async function loadApp<T extends ObjectType>(
       ],
     };
 
+    // 手动调用 loadMicroApp 时 子应用增加的update钩子
     if (typeof update === 'function') {
       parcelConfig.update = update;
     }

@@ -58,10 +58,11 @@ export function registerMicroApps<T extends ObjectType>(
       name,
       activeWhen: activeRule,
       customProps: props,
-      // 激活 activeRule 时调用
+      // 路由匹配 activeRule 时调用【首次路由匹配时才会进来，后续匹配路由会调用mount、unmount等return的钩子】
       app: async () => {
+        console.log('激活:',name);
         loader(true);
-        // 确定等待调用start才开始加载子应用
+        // 确定等待调用start才开始加载子应用【如果没调用start，直接激活app回调可能会导致初始化的参数不正确】
         await frameworkStartedDefer.promise;
 
         // console.log('frameworkConfiguration:', frameworkConfiguration);
