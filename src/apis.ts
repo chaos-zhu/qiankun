@@ -222,7 +222,7 @@ export function start(opts: FrameworkConfiguration = {}) {
   } = frameworkConfiguration;
 
   if (prefetch) {
-    // 预加载子应用
+    // 预加载策略子应用
     doPrefetchStrategy(microApps, prefetch, importEntryOpts);
   }
 

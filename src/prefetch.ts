@@ -53,15 +53,19 @@ function prefetch(entry: Entry, opts?: ImportEntryOpts): void {
 
   // 空闲时间加载 子应用&子应用资源(script/sytle)
   requestIdleCallback(async () => {
+    // 两个方法，调用后会去加载template中的script、style，最终返回promise
+    // 【对于请求过的资源url，importEntry会添加一层缓存，下次直接返回结果】
     const { getExternalScripts, getExternalStyleSheets } = await importEntry(entry, opts);
+    // console.log('getExternalStyleSheets：', getExternalStyleSheets());
     requestIdleCallback(getExternalStyleSheets);
     requestIdleCallback(getExternalScripts);
   });
 }
 
 function prefetchAfterFirstMounted(apps: AppMetadata[], opts?: ImportEntryOpts): void {
-  // 监听第一个子应用加载完成后开始加载其他子应用
+  // 监听single-spa发布的first-mout钩子，第一个子应用加载完成后开始加载其他子应用
   window.addEventListener('single-spa:first-mount', function listener() {
+    // 判断是否加载过
     const notLoadedApps = apps.filter((app) => getAppStatus(app.name) === NOT_LOADED);
 
     if (process.env.NODE_ENV === 'development') {
@@ -69,20 +73,23 @@ function prefetchAfterFirstMounted(apps: AppMetadata[], opts?: ImportEntryOpts):
       console.log(`[qiankun] prefetch starting after ${mountedApps} mounted...`, notLoadedApps);
     }
 
+    // 开始预载
     notLoadedApps.forEach(({ entry }) => prefetch(entry, opts));
 
+    // 加载启动，移除监听
     window.removeEventListener('single-spa:first-mount', listener);
   });
 }
 
+// 初始化时加载所有应用资源
 export function prefetchImmediately(apps: AppMetadata[], opts?: ImportEntryOpts): void {
   if (process.env.NODE_ENV === 'development') {
     console.log('[qiankun] prefetch starting for apps...', apps);
   }
-
   apps.forEach(({ entry }) => prefetch(entry, opts));
 }
 
+// 预加载子应用
 export function doPrefetchStrategy(
   apps: AppMetadata[],
   prefetchStrategy: PrefetchStrategy,
@@ -91,21 +98,25 @@ export function doPrefetchStrategy(
   const appsName2Apps = (names: string[]): AppMetadata[] => apps.filter((app) => names.includes(app.name));
 
   if (Array.isArray(prefetchStrategy)) {
+    // 1数组：预加载指定子应用
     prefetchAfterFirstMounted(appsName2Apps(prefetchStrategy as string[]), importEntryOpts);
+
   } else if (isFunction(prefetchStrategy)) {
+    // 2.函数：指定时机，自定义加载子应用
     (async () => {
-      // critical rendering apps would be prefetch as earlier as possible
+      // 指定部分应用直接加载；另一部分使用requestIdleCallback预加载
       const { criticalAppNames = [], minorAppsName = [] } = await prefetchStrategy(apps);
       prefetchImmediately(appsName2Apps(criticalAppNames), importEntryOpts);
       prefetchAfterFirstMounted(appsName2Apps(minorAppsName), importEntryOpts);
     })();
   } else {
+    // 3.字符串：
     switch (prefetchStrategy) {
-      // 默认，加载完第一个应用后开始预加载其他子应用
+      // 默认，第一个应用mount后开始预加载其他子应用tempalte资源(只加载缓存，不执行js)
       case true:
         prefetchAfterFirstMounted(apps, importEntryOpts);
         break;
-
+      // start后立即加载所有子应用【不等待第一个应用mount】(只加载缓存，不执行js)
       case 'all':
         prefetchImmediately(apps, importEntryOpts);
         break;

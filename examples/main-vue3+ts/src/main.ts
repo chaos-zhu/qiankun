@@ -80,12 +80,13 @@ registerMicroApps(
 /**
  * Step3 设置默认进入的子应用
  */
-setDefaultMountApp('/react16')
+// setDefaultMountApp('/react16')
 
 /**
  * Step4 启动应用
  */
 start({
+  // prefetch: false,
   sandbox: {
     // strictStyleIsolation: true, // shadow dom
     experimentalStyleIsolation: true // scope css

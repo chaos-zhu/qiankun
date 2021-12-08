@@ -8,6 +8,7 @@
     <div class="mainapp-main">
       <!-- 侧边栏 -->
       <ul class="mainapp-sidemenu" style="display:flex;flex-direction: column;align-items: center;">
+        <li @click="push('/')">Root</li>
         <li @click="push('/react16')">React16</li>
         <li @click="push('/react15')">React15</li>
         <li @click="push('/vue')">Vue</li>

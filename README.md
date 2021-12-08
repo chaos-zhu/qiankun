@@ -1,5 +1,7 @@
 # qiankun 源码阅读库
 
+> 版本：2.5.0
+
 **fork源官方库**
 
 > `examples/main原引入打包后的es文件，不方便调试`
