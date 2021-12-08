@@ -53,8 +53,9 @@ function prefetch(entry: Entry, opts?: ImportEntryOpts): void {
 
   // 空闲时间加载 子应用&子应用资源(script/sytle)
   requestIdleCallback(async () => {
-    // 两个方法，调用后会去加载template中的script、style，最终返回promise
-    // 【对于请求过的资源url，importEntry会添加一层缓存，下次直接返回结果】
+    // importEntry加载子应用入口文件，并返回getExternalScripts, getExternalStyleSheets方法
+    // 调用这俩方法会加载对应子应用入口文件中的script、style的资源文件，最终返回promise
+    // 【对于请求过的资源url，importEntry会添加缓存，下次直接返回结果】
     const { getExternalScripts, getExternalStyleSheets } = await importEntry(entry, opts);
     // console.log('getExternalStyleSheets：', getExternalStyleSheets());
     requestIdleCallback(getExternalStyleSheets);
