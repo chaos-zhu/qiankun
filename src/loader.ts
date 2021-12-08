@@ -38,6 +38,7 @@ function assertElementExist(element: Element | null | undefined, msg?: string) {
   }
 }
 
+// 执行钩子，返回resolve
 function execHooksChain<T extends ObjectType>(
   hooks: Array<LifeCycleFn<T>>,
   app: LoadableApp<T>,
@@ -164,7 +165,7 @@ function getRender(appName: string, appContent: string, legacyRender?: HTMLConte
       return legacyRender({ loading, appContent: element ? appContent : '' });
     }
     const containerElement = getContainer(container!);
-    // 判断子应用容器是否存在
+    // 渲染时子应用容器不存在抛出错误
     if (phase !== 'unmounted') {
       const errorMsg = (() => {
         switch (phase) {
@@ -257,11 +258,11 @@ export async function loadApp<T extends ObjectType>(
   // console.log('configuration: ', configuration);
 
   // get the entry html content and script executor
-  // console.log(importEntryOpts); // {prefetch: true}
+  // console.log(importEntryOpts); // { prefetch: true }
   const { template, execScripts, assetPublicPath } = await importEntry(entry, importEntryOpts);
-  console.log('template: \n', template); // 外联的css加载后被内联
-  console.log('execScripts:  \n', execScripts); // 执行template中所有的js(可指定上下文)
-  console.log('assetPublicPath:  \n', assetPublicPath); // 公共路径
+  // console.log('template: \n', template); // 外联的css加载后被内联
+  // console.log('execScripts:  \n', execScripts); // 执行template中所有的js(可指定上下文)
+  // console.log('assetPublicPath:  \n', assetPublicPath); // 公共路径
 
   // 单实例模式时 需等待上一个应用卸载(unmount时 resolve)
   // console.log(singular); // 默认true
@@ -287,15 +288,18 @@ export async function loadApp<T extends ObjectType>(
     scopedCSS,
     appName,
   );
-  // console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
-  // debugger;
+  console.log('initialAppWrapperElement: \n', initialAppWrapperElement);
+  debugger;
 
   const initialContainer = 'container' in app ? app.container : undefined;
 
   // 渲染 html template
   const legacyRender = 'render' in app ? app.render : undefined; // 兼容 v1 ,v2 弃用 不推荐使用
   const render = getRender(appName, appContent, legacyRender);
+  // 渲染初始化的html模板，不包含执行js后生成的dom【在single-spa执行mount的时候会把最终的dom插入到页面】
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
+  console.log(initialAppWrapperElement);
+  debugger;
 
   // getAppWrapperGetter：获取子应用 root 元素（如果支持shadow dom return shadow dom root element）
   // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
@@ -307,7 +311,8 @@ export async function loadApp<T extends ObjectType>(
     scopedCSS,
     () => initialAppWrapperElement,
   );
-  // console.log('initialAppWrapperGetter: \n', initialAppWrapperGetter());
+  console.log(initialAppWrapperGetter);
+  debugger;
 
   // 开始处理 运行沙箱
   let global = globalContext; // 全局环境 window
@@ -316,7 +321,7 @@ export async function loadApp<T extends ObjectType>(
   // v2版本loose配置已废弃, useLooseSandbox为false
   const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
-  // 创建沙箱 (包含js执行沙箱和css隔离沙箱)
+  // 创建沙箱 (js执行沙箱、css隔离沙箱、css缓存优化)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,
@@ -338,20 +343,26 @@ export async function loadApp<T extends ObjectType>(
   const {
     beforeUnmount = [],
     afterUnmount = [],
+    beforeLoad = [], // QIANKUN环境变量与公共路径设置
     afterMount = [],
-    beforeMount = [],
-    beforeLoad = [],
+    beforeMount = [], // 取消QIANKUN环境变量与公共路径设置
     // getAddOns 中内部生命周期配置 微前端 加载的环境变量 __POWERED_BY_QIANKUN__
   } = mergeWith({}, getAddOns(global, assetPublicPath), lifeCycles, (v1, v2) => concat(v1 ?? [], v2 ?? []));
+  // console.log({
+  //   beforeUnmount,
+  //   afterUnmount,
+  //   beforeLoad,
+  //   afterMount,
+  //   beforeMount,
+  // });
 
   // 立即执行 beforeLoad 钩子(变量&publicPath配置)
   await execHooksChain(toArray(beforeLoad), app, global);
 
   // 在沙箱中执行 子应用js脚本 返回值：scriptExports 为子应用暴露的钩子
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox);
-  // debugger;
 
-  // 获取子应用暴露的钩子(有强制性校验)
+  // 获取&校验子应用暴露的钩子
   const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(
     scriptExports,
     appName,
@@ -359,7 +370,7 @@ export async function loadApp<T extends ObjectType>(
     sandboxContainer?.instance?.latestSetProp,
   );
 
-  // 主子应用通信(暂时忽略)
+  // 主子应用通信(发布订阅那一套)
   const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
     getMicroAppStateActions(appInstanceId);
 
@@ -368,12 +379,13 @@ export async function loadApp<T extends ObjectType>(
 
   // 返回的一系列钩子供 single-spa 适当时机调用
   const parcelConfigGetter: ParcelConfigObjectGetter = (remountContainer = initialContainer) => {
+
     let appWrapperElement: HTMLElement | null;
     let appWrapperGetter: ReturnType<typeof getAppWrapperGetter>;
 
     const parcelConfig: ParcelConfigObject = {
       name: appInstanceId,
-      // 子应用初始化时调用
+      // 子应用暴露的bootstrap
       bootstrap,
       // 子应用挂载时调用
       mount: [
@@ -384,7 +396,7 @@ export async function loadApp<T extends ObjectType>(
           }
           return undefined;
         },
-        // ？initial wrapper element before app mount/remount
+        // 获取当前应用的相关配置
         async () => {
           appWrapperElement = initialAppWrapperElement;
           appWrapperGetter = getAppWrapperGetter(
@@ -396,25 +408,25 @@ export async function loadApp<T extends ObjectType>(
             () => appWrapperElement,
           );
         },
-        // ？添加 mount hook, 确保每次应用加载前容器 dom 结构已经设置完毕
         async () => {
           const useNewContainer = remountContainer !== initialContainer;
           if (useNewContainer || !appWrapperElement) {
-            // element will be destroyed after unmounted, we need to recreate it if it not exist
-            // or we try to remount into a new container
+            // 二次挂载initialContainer可能会被销毁，需重新构建一次
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appName);
             syncAppWrapperElement2Sandbox(appWrapperElement);
           }
-
+          // 渲染页面
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
+          console.log(appWrapperElement);
+          debugger;
         },
         // 激活沙箱
         mountSandbox,
         // 执行内部 beforeMount 钩子
         async () => execHooksChain(toArray(beforeMount), app, global),
-        // 执行子应用暴露的mount钩子
+        // 执行子应用暴露的mount钩子【子应用执行自己的render】
         async (props) => mount({ ...props, container: appWrapperGetter(), setGlobalState, onGlobalStateChange }),
-        // ？finish loading after app mounted
+        // 子应用执行mount钩子后 渲染一次页面？
         async () => render({ element: appWrapperElement, loading: false, container: remountContainer }, 'mounted'),
         // 执行内部 afterMount 钩子
         async () => execHooksChain(toArray(afterMount), app, global),

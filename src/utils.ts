@@ -109,12 +109,13 @@ export function getWrapperId(id: string) {
   return `__qiankun_microapp_wrapper_for_${snakeCase(id)}__`;
 }
 
-/** 校验子应用导出的 生命周期 对象是否正确 */
+// 校验子应用导出的 生命周期 对象是否正确
 export function validateExportLifecycle(exports: any) {
   const { bootstrap, mount, unmount } = exports ?? {};
   return isFunction(bootstrap) && isFunction(mount) && isFunction(unmount);
 }
 
+// 控制执行时机
 class Deferred<T> {
   promise: Promise<T>;
 

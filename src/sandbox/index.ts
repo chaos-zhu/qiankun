@@ -44,7 +44,7 @@ export function createSandboxContainer(
   if (window.Proxy) {
     // LegacySandbox：旧的单实例沙箱
     // ProxySandbox：多实例沙箱
-    console.log('useLooseSandbox: ', useLooseSandbox);
+    // console.log('useLooseSandbox: ', useLooseSandbox); // false
     sandbox = useLooseSandbox ? new LegacySandbox(appName, globalContext) : new ProxySandbox(appName, globalContext);
   } else {
     // 浏览器不支持Proxy时的单实例沙箱
