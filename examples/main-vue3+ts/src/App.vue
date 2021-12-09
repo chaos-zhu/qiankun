@@ -1,9 +1,8 @@
 <template>
-<div>
   <div class="mainapp">
     <!-- 标题栏 -->
     <header class="mainapp-header">
-      <h1>{{QianKun || ''}}</h1>
+      <h1>{{''}}</h1>
     </header>
     <div class="mainapp-main">
       <!-- 侧边栏 -->
@@ -20,7 +19,6 @@
       <main id="subapp-viewport"></main>
     </div>
   </div>
-</div>
 </template>
 
 <script lang="ts">

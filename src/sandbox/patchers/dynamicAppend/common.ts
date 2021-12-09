@@ -172,7 +172,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
         dynamicStyleSheetElements, // 当前实例动态插入的css list
         scopedCSS,
         excludeAssetFilter,
-      } = containerConfig; // 【对应forStrictSandBox row:103】
+      } = containerConfig; // 【对应 forStrictSandBox row:103】
       // console.log(containerConfig);
       // debugger;
 
@@ -241,6 +241,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           const { fetch } = frameworkConfiguration;
           const referenceNode = mountDOM.contains(refChild) ? refChild : null; // 是否后代节点
 
+          // 外联 script
           if (src) {
             // 加载 script src, 执行环境为 proxy
             execScripts(null, [src], proxy, {
@@ -281,7 +282,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
             return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicScriptCommentElement, referenceNode);
           }
 
-          // 执行除src外的内联script js代码
+          // 内联script js代码
           execScripts(null, [`<script>${text}</script>`], proxy, { strictGlobal });
           // 添加提示到html
           const dynamicInlineScriptCommentElement = document.createComment('dynamic inline script replaced by qiankun');
@@ -356,7 +357,7 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     // appendChild 插入到head的劫持
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadAppendChild, // 原生插入方法
-      containerConfigGetter, // 通过创建的element 获取即将插入的style/script/link标签
+      containerConfigGetter, // 通过创建的element 获取当前实例配置
       isInvokedByMicroApp, // 是否是子应用的插入，通过上面的 weakMap 判断
     }) as typeof rawHeadAppendChild;
 

@@ -121,7 +121,7 @@ export function patchStrictSandbox(
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
   // 劫持创建(script、style、link)后动态插入, 目的是为了--
-  // // 缓存所有的的 style、link、script DOM【优化】
+  // 缓存所有的的 style、link、script DOM【优化】
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,

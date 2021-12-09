@@ -47,7 +47,7 @@ export function createSandboxContainer(
     // console.log('useLooseSandbox: ', useLooseSandbox); // false
     sandbox = useLooseSandbox ? new LegacySandbox(appName, globalContext) : new ProxySandbox(appName, globalContext);
   } else {
-    // 浏览器不支持Proxy时的单实例沙箱
+    // 浏览器不支持Proxy时的快照沙箱
     sandbox = new SnapshotSandbox(appName);
   }
 
@@ -72,7 +72,7 @@ export function createSandboxContainer(
       sandbox.active(); // 激活沙箱
       const sideEffectsRebuildersAtBootstrapping = sideEffectsRebuilders.slice(0, bootstrappingFreers.length);
       const sideEffectsRebuildersAtMounting = sideEffectsRebuilders.slice(bootstrappingFreers.length);
-      // 【初次挂载为空】子应用切换重新rebuild 缓存的 css 
+      // 【初次挂载为空】子应用切换重新rebuild 缓存的 css
       if (sideEffectsRebuildersAtBootstrapping.length) {
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }

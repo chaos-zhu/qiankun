@@ -41,7 +41,7 @@ export class ScopedCSS {
   }
 
   process(styleNode: HTMLStyleElement, prefix: string = '') {
-    // 给子应用根节点 tag 加 div[data-qian-appName] 前缀 ？？？
+    // 给子应用根节点 tag 加 div[data-qian-appName] 前缀
     if (styleNode.textContent !== '') {
       // 创建个临时的textNode节点，存储 sytle 中的css文本
       const textNode = document.createTextNode(styleNode.textContent || '');
@@ -211,6 +211,7 @@ export const process = (
   // 给每个选择器加特定前缀 实现多实例样式隔离
   if (tag && stylesheetElement.tagName === 'STYLE') {
     const prefix = `${tag}[${QiankunCSSRewriteAttr}="${appName}"]`;
+    // console.log(prefix);
     processor.process(stylesheetElement, prefix);
   }
 };
