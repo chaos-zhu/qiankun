@@ -48,6 +48,7 @@ function storeTest(props) {
 }
 
 export async function mount(props) {
+  console.log('vue3 mount')
   storeTest(props);
   render(props);
   instance.config.globalProperties.$onGlobalStateChange = props.onGlobalStateChange;
@@ -55,6 +56,7 @@ export async function mount(props) {
 }
 
 export async function unmount() {
+  console.log('vue3 unmount')
   instance.unmount();
   instance._container.innerHTML = '';
   instance = null;

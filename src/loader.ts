@@ -297,9 +297,10 @@ export async function loadApp<T extends ObjectType>(
   const legacyRender = 'render' in app ? app.render : undefined; // 兼容 v1 ,v2 弃用 不推荐使用
   const render = getRender(appName, appContent, legacyRender);
   // 渲染初始化的html模板，不包含执行js后生成的dom
-  // 【疑惑: 这里的插入仅仅是为了判断 loading 阶段主应用Container是否存在
+  // 【(解决)疑惑: 这里的插入仅仅是为了判断 loading 阶段主应用Container是否存在
   //   在single-spa执行mount的时候会把最终的dom插入到页面】
   // 【期望: 只需判断主应用容器是否存在，而不需要渲染一次页面(多余开销)；或者压根不需要判断，因为mount调用render时还是会判断一次】
+  // 在这里render一次是因为后面执行 execScripts 时可能会创建script、style等标签，然后插入到 initialAppWrapperElement 中
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
   // console.log(initialAppWrapperElement);
   // debugger;
@@ -365,7 +366,7 @@ export async function loadApp<T extends ObjectType>(
   // 在沙箱中执行 子应用js脚本 返回值：scriptExports 为子应用暴露的钩子
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox); // p1: 全局环境 p2: 是否严格模式
 
-  // 获取&校验子应用暴露的钩子
+  // 获取&校验子应用暴露的钩子【一般来讲执行子应用入口文件，此时还未执行 render 】
   const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(
     scriptExports,
     appName,
@@ -415,15 +416,15 @@ export async function loadApp<T extends ObjectType>(
         async () => {
           const useNewContainer = remountContainer !== initialContainer;
           if (useNewContainer || !appWrapperElement) {
-            console.log('===========');
-            // 二次挂载initialContainer可能会被销毁，需重新构建一次
+            // console.log('===========');
+            // 二次挂载initialContainer(可能)会被销毁，需重新构建一次
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appName);
             syncAppWrapperElement2Sandbox(appWrapperElement);
           }
-          // 渲染页面【疑问：二次激活时插入到页面，不会重新请求资源？？？】
+          // 渲染页面【疑问：二次激活时继续调用render】
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
-          console.log(appWrapperElement);
-          debugger;
+          // console.log(appWrapperElement);
+          // debugger;
         },
         // 激活沙箱
         mountSandbox,
