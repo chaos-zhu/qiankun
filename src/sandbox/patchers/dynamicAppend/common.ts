@@ -107,8 +107,11 @@ function convertLinkAsStyle(
   return styleElement;
 }
 
+// 用于缓存style DOM，重新构建时使用
 const styledComponentCSSRulesMap = new WeakMap<HTMLStyleElement, CSSRuleList>();
+// 缓存添加的script tag，删除时使用
 const dynamicScriptAttachedCommentMap = new WeakMap<HTMLScriptElement, Comment>();
+// 缓存添加的style tag，删除时使用
 const dynamicLinkAttachedInlineStyleMap = new WeakMap<HTMLLinkElement, HTMLStyleElement>();
 
 // 缓存css style
@@ -156,7 +159,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
     // createElement 动态创建的元素
     let element = newChild as any;
     const { rawDOMAppendOrInsertBefore, isInvokedByMicroApp, containerConfigGetter } = opts;
-    // 非style、link、script直接调用原生方法插入【不做缓存】
+    // 非style、link、script直接调用原生方法插入
     if (!isHijackingTag(element.tagName) || !isInvokedByMicroApp(element)) {
       return rawDOMAppendOrInsertBefore.call(this, element, refChild) as T;
     }
@@ -177,9 +180,9 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
       // debugger;
 
       switch (element.tagName) {
-        case LINK_TAG_NAME:
+        case LINK_TAG_NAME: // 【注意这里没有break】
         case STYLE_TAG_NAME: {
-          // 动态加入的style标签
+          // 断言插入的标签为 style【通过link标签加载的样式，最终处理后也会挂到这个标签下面】
           let stylesheetElement: HTMLLinkElement | HTMLStyleElement = newChild as any;
           const { href } = stylesheetElement as HTMLLinkElement;
 
@@ -213,7 +216,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
                 (styleElement) => css.process(mountDOM, styleElement, appName),
                 fetch,
               );
-              // 动态缓存sytle
+              // 动态缓存sytle，remove元素时从这里移除【element === stylesheetElement】
               dynamicLinkAttachedInlineStyleMap.set(element, stylesheetElement);
             } else {
               // 不缓存，直接挂载(加上scope)
@@ -222,9 +225,9 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           }
 
           // eslint-disable-next-line no-shadow
-          dynamicStyleSheetElements.push(stylesheetElement); // push到css list中, 下次加载时直接从这里取出来！
+          dynamicStyleSheetElements.push(stylesheetElement); // push到css 动态缓存表
 
-          // 插入到dom中
+          // 插入到dom中【使用mountDOM作为上下文，不然插入到主应用的head中去了】
           const referenceNode = mountDOM.contains(refChild) ? refChild : null; // 判断是否后代节点
           return rawDOMAppendOrInsertBefore.call(mountDOM, stylesheetElement, referenceNode);
         }
@@ -243,12 +246,13 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
 
           // 外联 script
           if (src) {
+            console.log('动态创建的script src即将加载：', src);
             // 加载 script src, 执行环境为 proxy
             execScripts(null, [src], proxy, {
               fetch,
               strictGlobal,
               beforeExec: () => {
-                // 执行前的一些操作。。。
+                // 特殊情况：script标签的configurable
                 const isCurrentScriptConfigurable = () => {
                   const descriptor = Object.getOwnPropertyDescriptor(document, 'currentScript');
                   return !descriptor || descriptor.configurable;
@@ -263,12 +267,12 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
                 }
               },
               success: () => {
-                // 脚本执行完成 手动触发script load event
+                // 脚本执行完成 手动触发script load event(用于处理脚本内有监听的函数)
                 manualInvokeElementOnLoad(element);
                 element = null;
               },
               error: () => {
-                // 脚本执行出错 手动触发script error event
+                // 脚本执行出错 手动触发script error event(用于处理脚本内有监听的函数)
                 manualInvokeElementOnError(element);
                 element = null;
               },
@@ -276,7 +280,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
 
             // 添加提示到html
             const dynamicScriptCommentElement = document.createComment(`dynamic script ${src} replaced by qiankun`);
-            // 缓存动态加载的script (例 vue-router 的按需加载的js组件模块)
+            // 缓存加载的script, 删除时使用
             dynamicScriptAttachedCommentMap.set(element, dynamicScriptCommentElement);
             // 插入到dom
             return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicScriptCommentElement, referenceNode);
@@ -286,7 +290,7 @@ function getOverwrittenAppendChildOrInsertBefore(opts: {
           execScripts(null, [`<script>${text}</script>`], proxy, { strictGlobal });
           // 添加提示到html
           const dynamicInlineScriptCommentElement = document.createComment('dynamic inline script replaced by qiankun');
-          // 缓存动态加载的script (例 vue-router 的按需加载的js组件模块)
+          // 缓存加载的script, 删除时使用
           dynamicScriptAttachedCommentMap.set(element, dynamicInlineScriptCommentElement);
           // 插入到dom
           return rawDOMAppendOrInsertBefore.call(mountDOM, dynamicInlineScriptCommentElement, referenceNode);
@@ -354,21 +358,21 @@ export function patchHTMLDynamicAppendPrototypeFunctions(
     HTMLBodyElement.prototype.appendChild === rawBodyAppendChild &&
     HTMLHeadElement.prototype.insertBefore === rawHeadInsertBefore
   ) {
-    // appendChild 插入到head的劫持
+    // appendChild 插入到head后的劫持
     HTMLHeadElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadAppendChild, // 原生插入方法
       containerConfigGetter, // 通过创建的element 获取当前实例配置
       isInvokedByMicroApp, // 是否是子应用的插入，通过上面的 weakMap 判断
     }) as typeof rawHeadAppendChild;
 
-    // appendChild 插入到body的劫持
+    // appendChild 插入到body后的劫持
     HTMLBodyElement.prototype.appendChild = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawBodyAppendChild,
       containerConfigGetter,
       isInvokedByMicroApp,
     }) as typeof rawBodyAppendChild;
 
-    // 劫持 insertBefore
+    // 劫持 insertBefore 插入到head前的劫持
     HTMLHeadElement.prototype.insertBefore = getOverwrittenAppendChildOrInsertBefore({
       rawDOMAppendOrInsertBefore: rawHeadInsertBefore as any,
       containerConfigGetter,
@@ -416,6 +420,7 @@ export function rebuildCSSRules(
       note that we must do this after style element had been added to document, which stylesheet would be associated to the document automatically.
       check the spec https://www.w3.org/TR/cssom-1/#associated-css-style-sheet
        */
+      // 这波操作不做，css可能不会生效...
       if (stylesheetElement instanceof HTMLStyleElement && isStyledComponentsLike(stylesheetElement)) {
         const cssRules = getStyledElementCSSRules(stylesheetElement);
         if (cssRules) {

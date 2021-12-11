@@ -69,7 +69,7 @@ export function patchAtBootstrapping(
       () => patchLooseSandbox(appName, elementGetter, sandbox.proxy, false, scopedCSS, excludeAssetFilter),
     ],
   };
-  // 返回free方法，调用返回rebuild方法【优化】
+  // 返回free方法，调用返回rebuild css方法【优化】
   return patchersInSandbox[sandbox.type]?.map((patch) => patch());
 }
 

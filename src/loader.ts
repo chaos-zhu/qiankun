@@ -420,6 +420,9 @@ export async function loadApp<T extends ObjectType>(
             // 二次挂载initialContainer(可能)会被销毁，需重新构建一次
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appName);
             syncAppWrapperElement2Sandbox(appWrapperElement);
+            render({ element: null, loading: false, container: remountContainer }, 'unmounted');
+            console.log(appWrapperElement);
+            debugger;
           }
           // 渲染页面【疑问：二次激活时继续调用render】
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');

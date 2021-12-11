@@ -117,11 +117,10 @@ export function patchStrictSandbox(
   const { dynamicStyleSheetElements } = containerConfig;
   // dynamicStyleSheetElements: (3) [style, style, style]
 
-  // 劫持动态创建的script、style、link，并缓存到map，返回取消劫持方法(优化) 
+  // 劫持动态创建的script、style、link，返回取消劫持方法(优化) 
   const unpatchDocumentCreate = patchDocumentCreateElement();
 
-  // 劫持创建(script、style、link)后动态插入, 目的是为了--
-  // 缓存所有的的 style、link、script DOM【优化】
+  // 劫持创建(script、style、link)后动态插入, 目的：link与style是为了建立scopedCss和缓存优化(重建还原)；script是为能够在proxy环境下执行
   const unpatchDynamicAppendPrototypeFunctions = patchHTMLDynamicAppendPrototypeFunctions(
     (element) => elementAttachContainerConfigMap.has(element),
     (element) => elementAttachContainerConfigMap.get(element)!,
@@ -135,7 +134,7 @@ export function patchStrictSandbox(
     if (!mounting && bootstrappingPatchCount !== 0) bootstrappingPatchCount--;
     if (mounting) mountingPatchCount--;
 
-    // 确保没有子应用处于准备挂载或者挂载阶段，防止意外情况
+    // 确保当前子应用都已卸载
     const allMicroAppUnmounted = mountingPatchCount === 0 && bootstrappingPatchCount === 0;
     // 所有子应用未挂在状态： 清除原生方法劫持、缓存动态添加的样式、返回 rebuild 函数
     if (allMicroAppUnmounted) {
@@ -147,7 +146,7 @@ export function patchStrictSandbox(
 
     // free函数返回rebuild函数，用于从缓存中快速构建css
     return function rebuild() {
-      // 子应用重新构建时从缓存中加载css
+      // 把所有动态样式表的值全部都插入到页面
       rebuildCSSRules(dynamicStyleSheetElements, (stylesheetElement) => {
         const appWrapper = appWrapperGetter();
         if (!appWrapper.contains(stylesheetElement)) {

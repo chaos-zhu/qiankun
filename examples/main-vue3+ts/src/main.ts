@@ -89,7 +89,7 @@ start({
   // prefetch: false,
   sandbox: {
     // strictStyleIsolation: true, // shadow dom
-    experimentalStyleIsolation: true // scope css
+    // experimentalStyleIsolation: true // scope css
   }
 })
 

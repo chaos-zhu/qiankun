@@ -82,6 +82,9 @@ export function registerMicroApps<T extends ObjectType>(
         )();
         // console.log(otherMicroAppConfigs);
         // return (bootstrap、mount、unmount)生命周期<Array>(包含子应用暴露的), 供single-spa在适当时机调用
+        /* bootstrap：子应用初始化时调用，只会调用一次；
+           mount：子应用挂载时调用，可能会调用多次；
+           unmount：子应用卸载时调用，可能会调用多次；*/
         return {
           mount: [async () => loader(true), ...toArray(mount), async () => loader(false)],
           ...otherMicroAppConfigs,
