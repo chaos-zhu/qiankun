@@ -77,7 +77,7 @@ export function createSandboxContainer(
         sideEffectsRebuildersAtBootstrapping.forEach((rebuild) => rebuild());
       }
 
-      // 全局变量补丁(setInterval\EventListen), 防止内存泄露
+      // 全局变量补丁(setInterval/EventListener), 防止内存泄露
       mountingFreers = patchAtMounting(appName, elementGetter, sandbox, scopedCSS, excludeAssetFilter);
 
       // 如果是重载则从缓存中构建css

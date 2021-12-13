@@ -378,7 +378,7 @@ export async function loadApp<T extends ObjectType>(
   const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
     getMicroAppStateActions(appInstanceId);
 
-  // FIXME temporary way
+  // FIXME temporary way【存储根元素引用. 用处？】
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
 
   // 返回的一系列钩子供 single-spa 适当时机调用
@@ -414,17 +414,20 @@ export async function loadApp<T extends ObjectType>(
           );
         },
         async () => {
+          // initialAppWrapperElement: 首次创建的子应用根元素
+          // appWrapperElement: 子应用根元素(动态创建的)
+          // initialContainer&remountContainer: 主应用挂载子应用的DOM元素(只要主要应不操作，一直为同一个string)
           const useNewContainer = remountContainer !== initialContainer;
+          // 二次挂载 appWrapperElement DOM 会被(unmount: appWrapperElement = null)移除，需create构建一次
           if (useNewContainer || !appWrapperElement) {
-            // console.log('===========');
-            // 二次挂载initialContainer(可能)会被销毁，需重新构建一次
             appWrapperElement = createElement(appContent, strictStyleIsolation, scopedCSS, appName);
             syncAppWrapperElement2Sandbox(appWrapperElement);
+            // 清空容器内容【感觉没啥必要】
             render({ element: null, loading: false, container: remountContainer }, 'unmounted');
-            console.log(appWrapperElement);
-            debugger;
+            // console.log(appWrapperElement);
+            // debugger;
           }
-          // 渲染页面【疑问：二次激活时继续调用render】
+          // 渲染页面【调用render开始渲染，appWrapperElement】
           render({ element: appWrapperElement, loading: true, container: remountContainer }, 'mounting');
           // console.log(appWrapperElement);
           // debugger;
@@ -435,7 +438,7 @@ export async function loadApp<T extends ObjectType>(
         async () => execHooksChain(toArray(beforeMount), app, global),
         // 执行子应用暴露的mount钩子【子应用执行自己的render】
         async (props) => mount({ ...props, container: appWrapperGetter(), setGlobalState, onGlobalStateChange }),
-        // 子应用执行mount钩子后 渲染一次页面【重复渲染，loading实际貌似没啥用】
+        // 子应用执行mount钩子后【检查主应用容器mounted阶段是否存在】
         async () => render({ element: appWrapperElement, loading: false, container: remountContainer }, 'mounted'),
         // 执行内部 afterMount 钩子
         async () => execHooksChain(toArray(afterMount), app, global),
