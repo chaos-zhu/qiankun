@@ -80,7 +80,7 @@ export function registerMicroApps<T extends ObjectType>(
           // *  6、给微应用注册通信方法并返回通信方法，然后会将通信方法通过 props 注入到微应用
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
-        // console.log(otherMicroAppConfigs);
+        console.log(otherMicroAppConfigs);
         // return (bootstrap、mount、unmount)生命周期<Array>(包含子应用暴露的), 供single-spa在适当时机调用
         /* bootstrap：子应用初始化时调用，只会调用一次；
            mount：子应用挂载时调用，可能会调用多次；

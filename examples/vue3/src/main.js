@@ -29,7 +29,7 @@ if (!window.__POWERED_BY_QIANKUN__) {
 }
 
 export async function bootstrap() {
-  console.log('%c ', 'color: green;', 'vue3.0 app bootstraped');
+  console.log('vue3.0 app bootstraped==========');
 }
 
 function storeTest(props) {
@@ -48,7 +48,7 @@ function storeTest(props) {
 }
 
 export async function mount(props) {
-  console.log('vue3 mount')
+  console.log('vue3 mount=========')
   storeTest(props);
   render(props);
   instance.config.globalProperties.$onGlobalStateChange = props.onGlobalStateChange;
