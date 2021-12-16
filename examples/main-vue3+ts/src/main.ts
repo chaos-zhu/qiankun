@@ -88,8 +88,8 @@ registerMicroApps(
 start({
   // prefetch: false,
   sandbox: {
+    experimentalStyleIsolation: true // scope css
     // strictStyleIsolation: true, // shadow dom
-    // experimentalStyleIsolation: true // scope css
   }
 })
 

@@ -6,6 +6,7 @@
     <el-button @click="dialogVisible = true" type="text">Open Dialog</el-button>
 
     <el-dialog
+      :modal-append-to-body="false"
       :before-close="handleClose"
       :visible.sync="dialogVisible"
       title="Dialog"

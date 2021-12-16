@@ -10,10 +10,10 @@ export default {
   target: 'browser',
   esm: 'babel', // es
   // cjs: 'babel', // lib
-  // umd: { // dist
-  //   minFile: true,
-  //   sourcemap: true,
-  // },
+  umd: { // dist
+    minFile: true,
+    sourcemap: true,
+  },
   runtimeHelpers: true,
   extraBabelPlugins: [
     [

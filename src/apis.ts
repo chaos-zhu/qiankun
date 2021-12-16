@@ -53,7 +53,7 @@ export function registerMicroApps<T extends ObjectType>(
 
   unregisteredApps.forEach((app) => {
     const { name, activeRule, loader = noop, props, ...appConfig } = app;
-    // 调用single-spa 注册子应用(注册：在路由匹配后机会app回调)
+    // 调用single-spa 注册子应用(注册：在路由匹配后激活app回调)
     registerApplication({
       name,
       activeWhen: activeRule,
@@ -80,7 +80,7 @@ export function registerMicroApps<T extends ObjectType>(
           // *  6、给微应用注册通信方法并返回通信方法，然后会将通信方法通过 props 注入到微应用
           await loadApp({ name, props, ...appConfig }, frameworkConfiguration, lifeCycles)
         )();
-        console.log(otherMicroAppConfigs);
+        // console.log(otherMicroAppConfigs);
         // return (bootstrap、mount、unmount)生命周期<Array>(包含子应用暴露的), 供single-spa在适当时机调用
         /* bootstrap：子应用初始化时调用，只会调用一次；
            mount：子应用挂载时调用，可能会调用多次；
@@ -97,7 +97,7 @@ export function registerMicroApps<T extends ObjectType>(
 const appConfigPromiseGetterMap = new Map<string, Promise<ParcelConfigObjectGetter>>();
 const containerMicroAppsMap = new Map<string, MicroApp[]>();
 
-// 手动加载子应用
+// 手动加载子应用(多实例场景)
 export function loadMicroApp<T extends ObjectType>(
   app: LoadableApp<T>,
   configuration?: FrameworkConfiguration,

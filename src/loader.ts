@@ -378,7 +378,7 @@ export async function loadApp<T extends ObjectType>(
   const { onGlobalStateChange, setGlobalState, offGlobalStateChange }: Record<string, CallableFunction> =
     getMicroAppStateActions(appInstanceId);
 
-  // FIXME temporary way【存储根元素引用. 用处？】
+  // FIXME temporary way【mount与unmount时动态设置initialAppWrapperElement】
   const syncAppWrapperElement2Sandbox = (element: HTMLElement | null) => (initialAppWrapperElement = element);
 
   // 返回的一系列钩子供 single-spa 适当时机调用

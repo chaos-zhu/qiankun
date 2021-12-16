@@ -8,7 +8,7 @@ import type { FrameworkLifeCycles } from '../interfaces';
 export default function getAddOn(global: Window): FrameworkLifeCycles<any> {
   return {
     async beforeLoad() {
-      // 挂在前进行 微前端 环境变量设置
+      // 挂载前进行环境变量设置【挂载在proxy对象上】
       // eslint-disable-next-line no-param-reassign
       global.__POWERED_BY_QIANKUN__ = true;
     },
