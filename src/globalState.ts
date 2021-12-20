@@ -29,8 +29,11 @@ export function initGlobalState(state: Record<string, any> = {}) {
   if (state === globalState) {
     console.warn('[qiankun] state has not changed！');
   } else {
+    // 克隆一份旧props
     const prevGlobalState = cloneDeep(globalState);
+    // 保存新props
     globalState = cloneDeep(state);
+    // 触发监听回调，传入新旧props
     emitGlobal(globalState, prevGlobalState);
   }
   return getMicroAppStateActions(`global-${+new Date()}`, true);
@@ -85,11 +88,16 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
       }
 
       const changeKeys: string[] = [];
+      // 旧值
       const prevGlobalState = cloneDeep(globalState);
+      // 新值
       globalState = cloneDeep(
+        // 遍历更改对象的key
         Object.keys(state).reduce((_globalState, changeKey) => {
           if (isMaster || _globalState.hasOwnProperty(changeKey)) {
+            // 将每个key值放入 changeKeys
             changeKeys.push(changeKey);
+            // 新值覆盖旧值
             return Object.assign(_globalState, { [changeKey]: state[changeKey] });
           }
           console.warn(`[qiankun] '${changeKey}' not declared when init state！`);
@@ -100,6 +108,7 @@ export function getMicroAppStateActions(id: string, isMaster?: boolean): MicroAp
         console.warn('[qiankun] state has not changed！');
         return false;
       }
+      // 触发事件
       emitGlobal(globalState, prevGlobalState);
       return true;
     },

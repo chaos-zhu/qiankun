@@ -105,7 +105,7 @@ export function doPrefetchStrategy(
   } else if (isFunction(prefetchStrategy)) {
     // 2.函数：指定时机，自定义加载子应用
     (async () => {
-      // 指定部分应用直接加载；另一部分使用requestIdleCallback预加载
+      // 指定部分应用首次立即加载；另一部分使用requestIdleCallback预加载
       const { criticalAppNames = [], minorAppsName = [] } = await prefetchStrategy(apps);
       prefetchImmediately(appsName2Apps(criticalAppNames), importEntryOpts);
       prefetchAfterFirstMounted(appsName2Apps(minorAppsName), importEntryOpts);
