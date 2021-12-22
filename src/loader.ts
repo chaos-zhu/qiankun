@@ -83,7 +83,7 @@ function createElement(
       let shadow: ShadowRoot;
 
       if (appElement.attachShadow) {
-        shadow = appElement.attachShadow({ mode: 'open' });
+        shadow = appElement.attachShadow({ mode: 'open' }); // 允许js外部访问根节点; close: 禁止外部访问
       } else {
         // 废弃的创建shadowDom api
         shadow = (appElement as any).createShadowRoot();
@@ -101,7 +101,7 @@ function createElement(
     // 为每一个style节点下的选择器添加 scoped 前缀
     const styleNodes = appElement.querySelectorAll('style') || [];
     forEach(styleNodes, (stylesheetElement: HTMLStyleElement) => {
-      css.process(appElement!, stylesheetElement, appName);
+      css.process(appElement!, stylesheetElement, appName); 
     });
   }
 
@@ -295,15 +295,12 @@ export async function loadApp<T extends ObjectType>(
 
   // 渲染 html template
   const legacyRender = 'render' in app ? app.render : undefined; // 兼容 v1 ,v2 弃用 不推荐使用
+  // getRender：不同生命周期时判断容器是否存在；清空容器中的子元素
   const render = getRender(appName, appContent, legacyRender);
   // 渲染初始化的html模板，不包含执行js后生成的dom
-  // 【(解决)疑惑: 这里的插入仅仅是为了判断 loading 阶段主应用Container是否存在
-  //   在single-spa执行mount的时候会把最终的dom插入到页面】
-  // 【期望: 只需判断主应用容器是否存在，而不需要渲染一次页面(多余开销)；或者压根不需要判断，因为mount调用render时还是会判断一次】
-  // 在这里render一次是因为后面执行 execScripts 时可能会创建script、style等标签，然后插入到 initialAppWrapperElement 中
+  // 在这里render一次是因为后面执行 execScripts 时可能会创建dom，然后插入到template的模板中。如果不渲染一次，会找不到目标target dom
   render({ element: initialAppWrapperElement, loading: true, container: initialContainer }, 'loading');
   // console.log(initialAppWrapperElement);
-  // debugger;
 
   // getAppWrapperGetter：获取最初状态的子应用 root 元素（如果支持shadow dom return shadow dom root element）
   // <div id="__qiankun_microapp_wrapper_for_${appInstanceId}__" data-name="${appName}">${template}</div>
