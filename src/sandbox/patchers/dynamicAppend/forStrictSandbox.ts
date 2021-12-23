@@ -49,7 +49,7 @@ function patchDocumentCreateElement() {
       tagName: K,
       options?: ElementCreationOptions,
     ): HTMLElement {
-      // 调用原生方法创建dom
+    // 调用原生方法创建dom
       const element = rawDocumentCreateElement.call(this, tagName, options);
       // 判断dom tag是否为为sytle、link、script
       if (isHijackingTag(tagName)) {
