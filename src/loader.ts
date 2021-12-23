@@ -322,7 +322,7 @@ export async function loadApp<T extends ObjectType>(
   // v2版本loose配置已废弃, useLooseSandbox为false
   const useLooseSandbox = typeof sandbox === 'object' && !!(sandbox as any).loose;
   let sandboxContainer;
-  // 创建沙箱 (js执行沙箱、css隔离沙箱、css缓存优化)
+  // 创建沙箱 (js执行沙箱、css隔离沙箱、css动态规则缓存)
   if (sandbox) {
     sandboxContainer = createSandboxContainer(
       appName,
@@ -363,7 +363,7 @@ export async function loadApp<T extends ObjectType>(
   // 在沙箱中执行 子应用js脚本 返回值：scriptExports 为子应用暴露的钩子
   const scriptExports: any = await execScripts(global, sandbox && !useLooseSandbox); // p1: 全局环境 p2: 是否严格模式
 
-  // 获取&校验子应用暴露的钩子【一般来讲执行子应用入口文件，此时还未执行 render 】
+  // 获取&校验子应用暴露的钩子【一般来讲执行子应用入口文件，此时子应用还未执行 render 】
   const { bootstrap, mount, unmount, update } = getLifecyclesFromExports(
     scriptExports,
     appName,
@@ -413,7 +413,7 @@ export async function loadApp<T extends ObjectType>(
         async () => {
           // initialAppWrapperElement: 首次创建的子应用根元素
           // appWrapperElement: 子应用根元素(动态创建的)
-          // initialContainer&remountContainer: 主应用挂载子应用的DOM元素(只要主要应不操作，一直为同一个string)
+          // remountContainer&initialContainer: 主应用挂载子应用的DOM元素(只要主应用不操作，一直为同一个string)
           const useNewContainer = remountContainer !== initialContainer;
           // 二次挂载 appWrapperElement DOM 会被(unmount: appWrapperElement = null)移除，需create构建一次
           if (useNewContainer || !appWrapperElement) {
